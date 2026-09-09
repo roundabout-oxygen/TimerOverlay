@@ -10,6 +10,10 @@
 0.00秒単位のミリ秒カウントダウンも実画面と完全に一致して滑らかに追従します。  
 インストール不要、外部DLL不要、**わずか約25KBの単一実行ファイル**で動作します。
 
+<p align="center">
+  <img width="480" height="480" alt="Timer Overlay Demo" src="https://github.com/user-attachments/assets/6c1b3b54-a64b-4ae9-aa4d-748660e6eb1a" />
+</p>
+
 ---
 
 ## 📥 ダウンロード (Download)
