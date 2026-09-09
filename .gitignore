@@ -1,0 +1,20 @@
+# User configuration & logs (Never commit personal settings)
+config.json
+crash.log
+*.log
+
+# Build artifacts
+*.obj
+*.pdb
+*.tmp
+
+# OS generated files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE / Editor files
+.vs/
+.vscode/
+*.user
+*.suo
