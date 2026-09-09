@@ -15,14 +15,14 @@ using System.Drawing;
 using System.Drawing.Imaging;
 
 // アセンブリ情報・バージョニング (v1.1.4)
-[assembly: AssemblyTitle("Blue Archive Timer Overlay")]
-[assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay for Blue Archive")]
-[assembly: AssemblyProduct("BlueArchiveTimerOverlay")]
+[assembly: AssemblyTitle("Timer Overlay")]
+[assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
+[assembly: AssemblyProduct("TimerOverlay")]
 [assembly: AssemblyVersion("1.1.4.0")]
 [assembly: AssemblyFileVersion("1.1.4.0")]
 [assembly: AssemblyInformationalVersion("v1.1.4")]
 
-namespace BATimerOverlay
+namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
@@ -821,10 +821,10 @@ namespace BATimerOverlay
             try
             {
                 bool createdNew;
-                _mutex = new Mutex(true, "Local\\BATimerOverlayNativeMutex", out createdNew);
+                _mutex = new Mutex(true, "Local\\TimerOverlayNativeMutex", out createdNew);
                 if (!createdNew)
                 {
-                    MessageBox.Show("「ブルアカ 残り時間オーバーレイ」は既に起動しています。\nタスクバーまたは画面上のウィンドウをご確認ください。", "多重起動の警告", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("「タイマーオーバーレイ」は既に起動しています。\nタスクバーまたは画面上のウィンドウをご確認ください。", "多重起動の警告", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 

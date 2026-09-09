@@ -1,11 +1,11 @@
-# Blue Archive Timer Overlay (ブルアカ 残り時間 最前面オーバーレイ)
+# Timer Overlay (ゲーム画面 残り時間 最前面オーバーレイ)
 
 [![Version](https://img.shields.io/badge/version-v1.1.4-blue.svg)](VERSION)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey.svg)]()
 [![Size](https://img.shields.io/badge/size-~25KB-success.svg)]()
 
-ゲーム「ブルーアーカイブ」の戦闘画面右上にある**「残り時間（0.00s単位）」**をリアルタイム（遅延約0.05ms/frame）にトリミングし、画面中央下など見やすい位置へ最前面・角丸枠なし（四隅完全透過）で表示するWindows用超軽量オーバーレイツールです。
+ゲーム（ブルーアーカイブ等）の戦闘画面右上などにある**「残り時間（0.00s単位）」**をリアルタイム（遅延約0.05ms/frame）にトリミングし、画面中央下など見やすい位置へ最前面・角丸枠なし（四隅完全透過）で表示するWindows用超軽量オーバーレイツールです。
 
 0.00秒単位のミリ秒カウントダウンも実画面と完全に一致して滑らかに追従します。  
 インストール不要、外部DLL不要、**わずか約25KBの単一実行ファイル**で動作します。
@@ -37,7 +37,7 @@
 ## 使い方
 
 ### 1. ダウンロード & 起動
-1. [`release/`](release/) フォルダ内の **`ba_timer_overlay.exe`**（または `BA_Timer_Overlay.zip` を展開）を実行します。
+1. [`release/`](release/) フォルダ内の **`timer_overlay.exe`**（または `Timer_Overlay.zip` を展開）を実行します。
 2. インストーラーや追加のランタイムは一切不要です。ダブルクリックするだけで即座に起動します。
 
 ### 2. トリミング範囲の指定（初回起動時）
@@ -70,10 +70,10 @@ Windows標準の .NET Framework コンパイラ（`csc.exe`）を使用するた
 build.bat
 ```
 
-スクリプト内部で以下のコマンドが実行され、`release\ba_timer_overlay.exe` が生成されます：
+スクリプト内部で以下のコマンドが実行され、`release\timer_overlay.exe` が生成されます：
 
 ```cmd
-C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /platform:x64 /optimize+ /win32icon:src\app.ico /lib:C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF /r:System.dll,System.Core.dll,System.Drawing.dll,System.Windows.Forms.dll,WindowsBase.dll,PresentationCore.dll,PresentationFramework.dll,System.Xaml.dll /out:release\ba_timer_overlay.exe src\App.cs
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /platform:x64 /optimize+ /win32icon:src\app.ico /lib:C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF /r:System.dll,System.Core.dll,System.Drawing.dll,System.Windows.Forms.dll,WindowsBase.dll,PresentationCore.dll,PresentationFramework.dll,System.Xaml.dll /out:release\timer_overlay.exe src\App.cs
 ```
 
 ---
