@@ -12,6 +12,15 @@
 
 ---
 
+## 📥 ダウンロード (Download)
+
+[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.4)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
+
+> 👆 **上記のボタンをクリックすると、最新版 `timer_overlay.exe`（約25KB）を直接ダウンロードできます。**  
+> ※ZIPの展開やインストーラーの実行は一切不要です。ダウンロードした `.exe` をダブルクリックするだけで即座に動作します。
+
+---
+
 ## 主な特徴
 
 - ⚡ **超低遅延・0.00s完全一致（ラグなし）**
@@ -37,7 +46,7 @@
 ## 使い方
 
 ### 1. ダウンロード & 起動
-1. [`release/`](release/) フォルダ内の **`timer_overlay.exe`**（または `Timer_Overlay.zip` を展開）を実行します。
+1. 上記の [**ダウンロードボタン**](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe) から **`timer_overlay.exe`** をダウンロードします。
 2. インストーラーや追加のランタイムは一切不要です。ダブルクリックするだけで即座に起動します。
 
 ### 2. トリミング範囲の指定（初回起動時）
