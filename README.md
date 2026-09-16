@@ -1,6 +1,6 @@
 # Timer Overlay (ゲーム画面 残り時間 最前面オーバーレイ)
 
-[![Version](https://img.shields.io/badge/version-v1.1.6-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-v1.1.7-blue.svg)](VERSION)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey.svg)]()
 [![Size](https://img.shields.io/badge/size-~26KB-success.svg)]()
@@ -8,6 +8,7 @@
 ゲーム（ブルーアーカイブ等）の戦闘画面右上などにある**「残り時間（0.00s単位）」**をリアルタイム（遅延約0.05ms/frame）にトリミングし、画面中央下など見やすい位置へ最前面・角丸枠なし（四隅完全透過）で表示するWindows用超軽量オーバーレイツールです。
 
 0.00秒単位のミリ秒カウントダウンも実画面と完全に一致して滑らかに追従します。  
+デュアルディスプレイ（マルチモニター）環境にも完全対応し、隣のディスプレイの領域指定や別画面への配置も自由自在です。  
 インストール不要、外部DLL不要、**わずか約26KBの単一実行ファイル**で動作します。
 
 <p align="center">
@@ -18,7 +19,7 @@
 
 ## 📥 ダウンロード (Download)
 
-[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.6)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
+[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.7)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
 
 > 👆 **上記のボタンをクリックすると、最新版 `timer_overlay.exe`（約26KB）を直接ダウンロードできます。**  
 > ※ZIPの展開やインストーラーの実行は一切不要です。ダウンロードした `.exe` をダブルクリックするだけで即座に動作します。
@@ -29,6 +30,9 @@
 
 - ⚡ **超低遅延・0.00s完全一致（ラグなし）**
   - Windowsネイティブグラフィックス（GDI / DWM）により、1フレームあたり **約0.05ms（秒間20,000フレーム相当）** の超高速処理を実現。ミリ秒単位の激しいカウントダウンも一切遅延なく実画面と一致します。
+- 🖥️ **デュアルディスプレイ・マルチモニター完全対応（v1.1.7新機能）**
+  - メインモニターの左・右・上・下に配置されたセカンダリディスプレイ（負の仮想スクリーン座標系）のキャプチャに完全対応。
+  - 隣のモニター上の領域をトリミングしたり、オーバーレイを別モニターへ移動・保存することが可能です。
 - 🪟 **邪魔にならない最前面・角丸四隅透過UI**
   - 余計なウィンドウ枠やタイトルバーを排除したクリーンなデザイン。
   - 四隅は完全透過となっており、ゲーム画面の上に青い角丸カードだけが綺麗に浮き出ます。
@@ -38,7 +42,7 @@
 - 🎨 **多重起動モード ＆ 各枠独立トリミング（青枠・黄枠・赤枠）**
   - 右クリックメニューの「多重起動」から「黄枠」「赤枠」を追加可能。
   - **各枠（青・黄・赤）は完全に独立したトリミング領域とサイズを持てます。**
-  - 黄枠の [📐] ボタンを押せば黄枠だけが再設定され、青枠や赤枠には影響しません。「青枠にタイマー」「黄枠にHPバー」「赤枠にコストゲージ」等の同時表示が可能です。
+  - 黄枠の [📐] ボタンを押せば黄枠だけが再設定され、青枠や赤枠には影響しません。「青枠にメイン画面のタイマー」「黄枠に隣のモニターのHPバー」「赤枠にコストゲージ」等の同時表示が可能です。
   - それぞれ個別にドラッグ移動でき、右クリック「アプリを終了」で開いている全枠を一括終了できます。
 - 🖱️ **マウスドラッグで自由配置 ＆ 位置自動保存**
   - オーバーレイウィンドウのどこを掴んでも、お好みの場所（画面中央下や端など）へドラッグ移動できます。移動した位置は自動保存され、次回起動時も同じ場所に表示されます。
@@ -105,7 +109,7 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /platform
 本ツールは `v1.1.x` 形式でバージョンを管理しています。  
 機能の追加・変更・修正が行われるたびに、末尾の数値（パッチバージョン）を +1 ずつインクリメントします（例: `v1.1.5` → `v1.1.6`）。
 
-- **現在バージョン**: `v1.1.6`
+- **現在バージョン**: `v1.1.7`
 
 ---
 

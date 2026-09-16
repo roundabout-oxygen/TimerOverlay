@@ -14,20 +14,20 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.6)
+// アセンブリ情報・バージョニング (v1.1.7)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.6.0")]
-[assembly: AssemblyFileVersion("1.1.6.0")]
-[assembly: AssemblyInformationalVersion("v1.1.6")]
+[assembly: AssemblyVersion("1.1.7.0")]
+[assembly: AssemblyFileVersion("1.1.7.0")]
+[assembly: AssemblyInformationalVersion("v1.1.7")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.6";
+        public const string CurrentVersion = "v1.1.7";
 
         // メイン（青枠）
         public int CaptureX { get; set; }
@@ -53,37 +53,37 @@ namespace TimerOverlay
 
         public Config()
         {
-            CaptureX = -1;
-            CaptureY = -1;
+            CaptureX = 0;
+            CaptureY = 0;
             CaptureW = -1;
             CaptureH = -1;
-            OverlayX = -1;
-            OverlayY = -1;
+            OverlayX = -999999;
+            OverlayY = -999999;
             Scale = 1.25;
             TargetFps = 60;
 
-            YellowCaptureX = -1;
-            YellowCaptureY = -1;
+            YellowCaptureX = 0;
+            YellowCaptureY = 0;
             YellowCaptureW = -1;
             YellowCaptureH = -1;
 
-            RedCaptureX = -1;
-            RedCaptureY = -1;
+            RedCaptureX = 0;
+            RedCaptureY = 0;
             RedCaptureW = -1;
             RedCaptureH = -1;
         }
 
         public bool HasCaptureRect
         {
-            get { return CaptureW > 0 && CaptureH > 0 && CaptureX >= 0 && CaptureY >= 0; }
+            get { return CaptureW > 0 && CaptureH > 0; }
         }
 
         public bool HasCaptureRectFor(OverlayColor color)
         {
             if (color == OverlayColor.Yellow)
-                return YellowCaptureW > 0 && YellowCaptureH > 0 && YellowCaptureX >= 0 && YellowCaptureY >= 0;
+                return YellowCaptureW > 0 && YellowCaptureH > 0;
             if (color == OverlayColor.Red)
-                return RedCaptureW > 0 && RedCaptureH > 0 && RedCaptureX >= 0 && RedCaptureY >= 0;
+                return RedCaptureW > 0 && RedCaptureH > 0;
             return HasCaptureRect;
         }
 
@@ -132,22 +132,22 @@ namespace TimerOverlay
                 try
                 {
                     string json = File.ReadAllText(ConfigPath);
-                    cfg.CaptureX = ExtractInt(json, "CaptureX", -1);
-                    cfg.CaptureY = ExtractInt(json, "CaptureY", -1);
+                    cfg.CaptureX = ExtractInt(json, "CaptureX", 0);
+                    cfg.CaptureY = ExtractInt(json, "CaptureY", 0);
                     cfg.CaptureW = ExtractInt(json, "CaptureW", -1);
                     cfg.CaptureH = ExtractInt(json, "CaptureH", -1);
-                    cfg.OverlayX = ExtractInt(json, "OverlayX", -1);
-                    cfg.OverlayY = ExtractInt(json, "OverlayY", -1);
+                    cfg.OverlayX = ExtractInt(json, "OverlayX", -999999);
+                    cfg.OverlayY = ExtractInt(json, "OverlayY", -999999);
                     cfg.Scale = ExtractDouble(json, "Scale", 1.25);
                     cfg.TargetFps = ExtractInt(json, "TargetFps", 60);
 
-                    cfg.YellowCaptureX = ExtractInt(json, "YellowCaptureX", -1);
-                    cfg.YellowCaptureY = ExtractInt(json, "YellowCaptureY", -1);
+                    cfg.YellowCaptureX = ExtractInt(json, "YellowCaptureX", 0);
+                    cfg.YellowCaptureY = ExtractInt(json, "YellowCaptureY", 0);
                     cfg.YellowCaptureW = ExtractInt(json, "YellowCaptureW", -1);
                     cfg.YellowCaptureH = ExtractInt(json, "YellowCaptureH", -1);
 
-                    cfg.RedCaptureX = ExtractInt(json, "RedCaptureX", -1);
-                    cfg.RedCaptureY = ExtractInt(json, "RedCaptureY", -1);
+                    cfg.RedCaptureX = ExtractInt(json, "RedCaptureX", 0);
+                    cfg.RedCaptureY = ExtractInt(json, "RedCaptureY", 0);
                     cfg.RedCaptureW = ExtractInt(json, "RedCaptureW", -1);
                     cfg.RedCaptureH = ExtractInt(json, "RedCaptureH", -1);
 
@@ -157,19 +157,19 @@ namespace TimerOverlay
                         int rectIdx = json.IndexOf("\"capture_rect\"");
                         if (rectIdx != -1)
                         {
-                            cfg.CaptureX = ExtractIntFromSection(json, rectIdx, "x", -1);
-                            cfg.CaptureY = ExtractIntFromSection(json, rectIdx, "y", -1);
+                            cfg.CaptureX = ExtractIntFromSection(json, rectIdx, "x", 0);
+                            cfg.CaptureY = ExtractIntFromSection(json, rectIdx, "y", 0);
                             cfg.CaptureW = ExtractIntFromSection(json, rectIdx, "width", -1);
                             cfg.CaptureH = ExtractIntFromSection(json, rectIdx, "height", -1);
                         }
                     }
-                    if (cfg.OverlayX < 0)
+                    if (cfg.OverlayX == -999999)
                     {
                         int posIdx = json.IndexOf("\"overlay_pos\"");
                         if (posIdx != -1)
                         {
-                            cfg.OverlayX = ExtractIntFromSection(json, posIdx, "x", -1);
-                            cfg.OverlayY = ExtractIntFromSection(json, posIdx, "y", -1);
+                            cfg.OverlayX = ExtractIntFromSection(json, posIdx, "x", -999999);
+                            cfg.OverlayY = ExtractIntFromSection(json, posIdx, "y", -999999);
                         }
                     }
                     if (Math.Abs(cfg.Scale - 1.25) < 0.001)
@@ -290,6 +290,9 @@ namespace TimerOverlay
 
         [DllImport("user32.dll")]
         public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool SetProcessDpiAwarenessContext(IntPtr dpiContext);
 
         [DllImport("user32.dll")]
         public static extern bool SetProcessDPIAware();
@@ -579,17 +582,18 @@ namespace TimerOverlay
             ShowInTaskbar = false;
             Cursor = Cursors.Cross;
 
-            Left = SystemParameters.VirtualScreenLeft;
-            Top = SystemParameters.VirtualScreenTop;
-            Width = SystemParameters.VirtualScreenWidth;
-            Height = SystemParameters.VirtualScreenHeight;
+            System.Drawing.Rectangle vs = System.Windows.Forms.SystemInformation.VirtualScreen;
+            Left = vs.Left;
+            Top = vs.Top;
+            Width = vs.Width;
+            Height = vs.Height;
 
-            int w = (int)Width;
-            int h = (int)Height;
+            int w = vs.Width;
+            int h = vs.Height;
             Bitmap screenBmp = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(screenBmp))
             {
-                g.CopyFromScreen((int)Left, (int)Top, 0, 0, new System.Drawing.Size(w, h));
+                g.CopyFromScreen(vs.Left, vs.Top, 0, 0, new System.Drawing.Size(w, h));
             }
             IntPtr hBitmap = screenBmp.GetHbitmap();
             BitmapSource screenBmpSource = Imaging.CreateBitmapSourceFromHBitmap(hBitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
@@ -602,8 +606,8 @@ namespace TimerOverlay
             SelectionCanvas canvas = new SelectionCanvas(screenBmpSource);
             canvas.AreaSelected += delegate(int x, int y, int sw, int sh)
             {
-                int gx = (int)Left + x;
-                int gy = (int)Top + y;
+                int gx = vs.Left + x;
+                int gy = vs.Top + y;
                 if (AreaSelected != null) AreaSelected(gx, gy, sw, sh);
                 Close();
             };
@@ -630,7 +634,9 @@ namespace TimerOverlay
     public class OverlayWindow : Window
     {
         private Config _config;
-        private ScreenCapture _capture;
+        private ScreenCapture _captureBlue;
+        private ScreenCapture _captureYellow;
+        private ScreenCapture _captureRed;
         private DispatcherTimer _timer;
         private System.Windows.Controls.Image _displayImage;
         private HwndSource _hwndSource;
@@ -656,7 +662,9 @@ namespace TimerOverlay
 
             if (IsPrimary)
             {
-                _capture = new ScreenCapture();
+                _captureBlue = new ScreenCapture();
+                _captureYellow = new ScreenCapture();
+                _captureRed = new ScreenCapture();
             }
 
             switch (ColorType)
@@ -876,7 +884,7 @@ namespace TimerOverlay
 
             if (IsPrimary)
             {
-                if (_config.OverlayX >= 0 && _config.OverlayY >= 0)
+                if (_config.OverlayX != -999999 && _config.OverlayY != -999999)
                 {
                     Left = _config.OverlayX;
                     Top = _config.OverlayY;
@@ -900,9 +908,9 @@ namespace TimerOverlay
                 int bx, by, bw, bh;
                 _config.GetCaptureRect(OverlayColor.Blue, out bx, out by, out bw, out bh);
                 BitmapSource bsBlue = null;
-                if (bw > 0 && bh > 0 && bx >= 0 && by >= 0)
+                if (bw > 0 && bh > 0)
                 {
-                    bsBlue = _capture.Capture(bx, by, bw, bh);
+                    bsBlue = _captureBlue.Capture(bx, by, bw, bh);
                     if (bsBlue != null)
                     {
                         _displayImage.Source = bsBlue;
@@ -914,7 +922,7 @@ namespace TimerOverlay
                 {
                     int yx, yy, yw, yh;
                     _config.GetCaptureRect(OverlayColor.Yellow, out yx, out yy, out yw, out yh);
-                    if (yw > 0 && yh > 0 && yx >= 0 && yy >= 0)
+                    if (yw > 0 && yh > 0)
                     {
                         if (yx == bx && yy == by && yw == bw && yh == bh && bsBlue != null)
                         {
@@ -922,7 +930,7 @@ namespace TimerOverlay
                         }
                         else
                         {
-                            BitmapSource bsYellow = _capture.Capture(yx, yy, yw, yh);
+                            BitmapSource bsYellow = _captureYellow.Capture(yx, yy, yw, yh);
                             if (bsYellow != null)
                             {
                                 YellowOverlay.SetFrame(bsYellow);
@@ -936,7 +944,7 @@ namespace TimerOverlay
                 {
                     int rx, ry, rw, rh;
                     _config.GetCaptureRect(OverlayColor.Red, out rx, out ry, out rw, out rh);
-                    if (rw > 0 && rh > 0 && rx >= 0 && ry >= 0)
+                    if (rw > 0 && rh > 0)
                     {
                         if (rx == bx && ry == by && rw == bw && rh == bh && bsBlue != null)
                         {
@@ -944,7 +952,7 @@ namespace TimerOverlay
                         }
                         else
                         {
-                            BitmapSource bsRed = _capture.Capture(rx, ry, rw, rh);
+                            BitmapSource bsRed = _captureRed.Capture(rx, ry, rw, rh);
                             if (bsRed != null)
                             {
                                 RedOverlay.SetFrame(bsRed);
@@ -1232,7 +1240,9 @@ namespace TimerOverlay
                     NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9);
                     _hwndSource.RemoveHook(HwndHook);
                 }
-                if (_capture != null) _capture.Dispose();
+                if (_captureBlue != null) _captureBlue.Dispose();
+                if (_captureYellow != null) _captureYellow.Dispose();
+                if (_captureRed != null) _captureRed.Dispose();
                 if (YellowOverlay != null) { YellowOverlay.Close(); YellowOverlay = null; }
                 if (RedOverlay != null) { RedOverlay.Close(); RedOverlay = null; }
                 base.OnClosed(e);
@@ -1263,7 +1273,18 @@ namespace TimerOverlay
                     return;
                 }
 
-                NativeMethods.SetProcessDPIAware();
+                try
+                {
+                    // Per-Monitor DPI Awareness (v2) を優先適用
+                    if (!NativeMethods.SetProcessDpiAwarenessContext((IntPtr)(-4)))
+                    {
+                        NativeMethods.SetProcessDPIAware();
+                    }
+                }
+                catch
+                {
+                    try { NativeMethods.SetProcessDPIAware(); } catch { }
+                }
 
                 Application app = new Application();
                 app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
