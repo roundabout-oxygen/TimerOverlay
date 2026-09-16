@@ -14,20 +14,20 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.7)
+// アセンブリ情報・バージョニング (v1.1.8)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.7.0")]
-[assembly: AssemblyFileVersion("1.1.7.0")]
-[assembly: AssemblyInformationalVersion("v1.1.7")]
+[assembly: AssemblyVersion("1.1.8.0")]
+[assembly: AssemblyFileVersion("1.1.8.0")]
+[assembly: AssemblyInformationalVersion("v1.1.8")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.7";
+        public const string CurrentVersion = "v1.1.8";
 
         // メイン（青枠）
         public int CaptureX { get; set; }
@@ -39,17 +39,21 @@ namespace TimerOverlay
         public double Scale { get; set; }
         public int TargetFps { get; set; }
 
-        // 黄枠用の独立キャプチャ座標
+        // 黄枠用の独立キャプチャ座標・倍率・FPS
         public int YellowCaptureX { get; set; }
         public int YellowCaptureY { get; set; }
         public int YellowCaptureW { get; set; }
         public int YellowCaptureH { get; set; }
+        public double YellowScale { get; set; }
+        public int YellowTargetFps { get; set; }
 
-        // 赤枠用の独立キャプチャ座標
+        // 赤枠用の独立キャプチャ座標・倍率・FPS
         public int RedCaptureX { get; set; }
         public int RedCaptureY { get; set; }
         public int RedCaptureW { get; set; }
         public int RedCaptureH { get; set; }
+        public double RedScale { get; set; }
+        public int RedTargetFps { get; set; }
 
         public Config()
         {
@@ -66,11 +70,15 @@ namespace TimerOverlay
             YellowCaptureY = 0;
             YellowCaptureW = -1;
             YellowCaptureH = -1;
+            YellowScale = 1.25;
+            YellowTargetFps = 60;
 
             RedCaptureX = 0;
             RedCaptureY = 0;
             RedCaptureW = -1;
             RedCaptureH = -1;
+            RedScale = 1.25;
+            RedTargetFps = 60;
         }
 
         public bool HasCaptureRect
@@ -119,6 +127,36 @@ namespace TimerOverlay
             Save();
         }
 
+        public double GetScale(OverlayColor color)
+        {
+            if (color == OverlayColor.Yellow) return YellowScale > 0 ? YellowScale : 1.25;
+            if (color == OverlayColor.Red) return RedScale > 0 ? RedScale : 1.25;
+            return Scale > 0 ? Scale : 1.25;
+        }
+
+        public void SetScale(OverlayColor color, double scale)
+        {
+            if (color == OverlayColor.Yellow) YellowScale = scale;
+            else if (color == OverlayColor.Red) RedScale = scale;
+            else Scale = scale;
+            Save();
+        }
+
+        public int GetFps(OverlayColor color)
+        {
+            if (color == OverlayColor.Yellow) return YellowTargetFps > 0 ? YellowTargetFps : 60;
+            if (color == OverlayColor.Red) return RedTargetFps > 0 ? RedTargetFps : 60;
+            return TargetFps > 0 ? TargetFps : 60;
+        }
+
+        public void SetFps(OverlayColor color, int fps)
+        {
+            if (color == OverlayColor.Yellow) YellowTargetFps = fps;
+            else if (color == OverlayColor.Red) RedTargetFps = fps;
+            else TargetFps = fps;
+            Save();
+        }
+
         private static string ConfigPath
         {
             get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json"); }
@@ -145,11 +183,15 @@ namespace TimerOverlay
                     cfg.YellowCaptureY = ExtractInt(json, "YellowCaptureY", 0);
                     cfg.YellowCaptureW = ExtractInt(json, "YellowCaptureW", -1);
                     cfg.YellowCaptureH = ExtractInt(json, "YellowCaptureH", -1);
+                    cfg.YellowScale = ExtractDouble(json, "YellowScale", 1.25);
+                    cfg.YellowTargetFps = ExtractInt(json, "YellowTargetFps", 60);
 
                     cfg.RedCaptureX = ExtractInt(json, "RedCaptureX", 0);
                     cfg.RedCaptureY = ExtractInt(json, "RedCaptureY", 0);
                     cfg.RedCaptureW = ExtractInt(json, "RedCaptureW", -1);
                     cfg.RedCaptureH = ExtractInt(json, "RedCaptureH", -1);
+                    cfg.RedScale = ExtractDouble(json, "RedScale", 1.25);
+                    cfg.RedTargetFps = ExtractInt(json, "RedTargetFps", 60);
 
                     // 互換性パース
                     if (cfg.CaptureW <= 0)
@@ -218,10 +260,14 @@ namespace TimerOverlay
                 sb.AppendLine(string.Format("  \"YellowCaptureY\": {0},", YellowCaptureY));
                 sb.AppendLine(string.Format("  \"YellowCaptureW\": {0},", YellowCaptureW));
                 sb.AppendLine(string.Format("  \"YellowCaptureH\": {0},", YellowCaptureH));
+                sb.AppendLine(string.Format("  \"YellowScale\": {0},", YellowScale.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
+                sb.AppendLine(string.Format("  \"YellowTargetFps\": {0},", YellowTargetFps));
                 sb.AppendLine(string.Format("  \"RedCaptureX\": {0},", RedCaptureX));
                 sb.AppendLine(string.Format("  \"RedCaptureY\": {0},", RedCaptureY));
                 sb.AppendLine(string.Format("  \"RedCaptureW\": {0},", RedCaptureW));
-                sb.AppendLine(string.Format("  \"RedCaptureH\": {0}", RedCaptureH));
+                sb.AppendLine(string.Format("  \"RedCaptureH\": {0},", RedCaptureH));
+                sb.AppendLine(string.Format("  \"RedScale\": {0},", RedScale.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
+                sb.AppendLine(string.Format("  \"RedTargetFps\": {0}", RedTargetFps));
                 sb.AppendLine("}");
                 File.WriteAllText(ConfigPath, sb.ToString());
             }
@@ -634,9 +680,7 @@ namespace TimerOverlay
     public class OverlayWindow : Window
     {
         private Config _config;
-        private ScreenCapture _captureBlue;
-        private ScreenCapture _captureYellow;
-        private ScreenCapture _captureRed;
+        private ScreenCapture _capture;
         private DispatcherTimer _timer;
         private System.Windows.Controls.Image _displayImage;
         private HwndSource _hwndSource;
@@ -660,12 +704,7 @@ namespace TimerOverlay
             ColorType = color;
             _parentOverlay = parentOverlay;
 
-            if (IsPrimary)
-            {
-                _captureBlue = new ScreenCapture();
-                _captureYellow = new ScreenCapture();
-                _captureRed = new ScreenCapture();
-            }
+            _capture = new ScreenCapture();
 
             switch (ColorType)
             {
@@ -840,21 +879,21 @@ namespace TimerOverlay
 
             ApplyLayout();
 
-            if (IsPrimary)
-            {
-                _timer = new DispatcherTimer(DispatcherPriority.Render);
-                int fps = Math.Max(30, Math.Min(144, _config.TargetFps));
-                _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
-                _timer.Tick += delegate { UpdateFrame(); };
+            _timer = new DispatcherTimer(DispatcherPriority.Render);
+            int fps = Math.Max(30, Math.Min(144, _config.GetFps(ColorType)));
+            _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
+            _timer.Tick += delegate { UpdateFrame(); };
 
-                Loaded += delegate
+            Loaded += delegate
+            {
+                _timer.Start();
+                if (IsPrimary)
                 {
                     _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
                     _hwndSource.AddHook(HwndHook);
                     NativeMethods.RegisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9, 0, 0x78); // F9
-                    _timer.Start();
-                };
-            }
+                }
+            };
         }
 
         private void UpdateButtonsVisibility()
@@ -878,9 +917,10 @@ namespace TimerOverlay
             _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
             if (cw <= 0 || ch <= 0) return;
 
+            double scale = _config.GetScale(ColorType);
             int pad = 8;
-            Width = (cw * _config.Scale) + pad;
-            Height = (ch * _config.Scale) + pad;
+            Width = (cw * scale) + pad;
+            Height = (ch * scale) + pad;
 
             if (IsPrimary)
             {
@@ -902,63 +942,14 @@ namespace TimerOverlay
 
         private void UpdateFrame()
         {
-            if (IsPrimary)
+            int cx, cy, cw, ch;
+            _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
+            if (cw > 0 && ch > 0)
             {
-                // 1. 青枠（メイン）のキャプチャ
-                int bx, by, bw, bh;
-                _config.GetCaptureRect(OverlayColor.Blue, out bx, out by, out bw, out bh);
-                BitmapSource bsBlue = null;
-                if (bw > 0 && bh > 0)
+                BitmapSource bs = _capture.Capture(cx, cy, cw, ch);
+                if (bs != null)
                 {
-                    bsBlue = _captureBlue.Capture(bx, by, bw, bh);
-                    if (bsBlue != null)
-                    {
-                        _displayImage.Source = bsBlue;
-                    }
-                }
-
-                // 2. 黄枠のキャプチャ（独立領域）
-                if (YellowOverlay != null && YellowOverlay.IsVisible)
-                {
-                    int yx, yy, yw, yh;
-                    _config.GetCaptureRect(OverlayColor.Yellow, out yx, out yy, out yw, out yh);
-                    if (yw > 0 && yh > 0)
-                    {
-                        if (yx == bx && yy == by && yw == bw && yh == bh && bsBlue != null)
-                        {
-                            YellowOverlay.SetFrame(bsBlue);
-                        }
-                        else
-                        {
-                            BitmapSource bsYellow = _captureYellow.Capture(yx, yy, yw, yh);
-                            if (bsYellow != null)
-                            {
-                                YellowOverlay.SetFrame(bsYellow);
-                            }
-                        }
-                    }
-                }
-
-                // 3. 赤枠のキャプチャ（独立領域）
-                if (RedOverlay != null && RedOverlay.IsVisible)
-                {
-                    int rx, ry, rw, rh;
-                    _config.GetCaptureRect(OverlayColor.Red, out rx, out ry, out rw, out rh);
-                    if (rw > 0 && rh > 0)
-                    {
-                        if (rx == bx && ry == by && rw == bw && rh == bh && bsBlue != null)
-                        {
-                            RedOverlay.SetFrame(bsBlue);
-                        }
-                        else
-                        {
-                            BitmapSource bsRed = _captureRed.Capture(rx, ry, rw, rh);
-                            if (bsRed != null)
-                            {
-                                RedOverlay.SetFrame(bsRed);
-                            }
-                        }
-                    }
+                    _displayImage.Source = bs;
                 }
             }
         }
@@ -974,66 +965,16 @@ namespace TimerOverlay
 
         public void SetScale(double scale)
         {
-            OverlayWindow root = IsPrimary ? this : _parentOverlay;
-            if (root != null)
-            {
-                root._config.Scale = scale;
-                root._config.Save();
-                root.ApplyLayout();
-                if (root.YellowOverlay != null) root.YellowOverlay.ApplyLayout();
-                if (root.RedOverlay != null) root.RedOverlay.ApplyLayout();
-            }
+            _config.SetScale(ColorType, scale);
+            ApplyLayout();
         }
 
         public void SetFps(int fps)
         {
-            OverlayWindow root = IsPrimary ? this : _parentOverlay;
-            if (root != null)
+            _config.SetFps(ColorType, fps);
+            if (_timer != null)
             {
-                root._config.TargetFps = fps;
-                root._config.Save();
-                if (root._timer != null)
-                {
-                    root._timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
-                }
-            }
-        }
-
-        public void ResetPosition()
-        {
-            if (IsPrimary)
-            {
-                Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
-                Top = SystemParameters.PrimaryScreenHeight - Height - 70;
-                _config.OverlayX = (int)Left;
-                _config.OverlayY = (int)Top;
-                _config.Save();
-                if (YellowOverlay != null)
-                {
-                    YellowOverlay.Left = Left;
-                    YellowOverlay.Top = Top + Height + 10;
-                }
-                if (RedOverlay != null)
-                {
-                    RedOverlay.Left = Left;
-                    RedOverlay.Top = (YellowOverlay != null ? YellowOverlay.Top + YellowOverlay.Height + 10 : Top + Height + 10);
-                }
-            }
-            else
-            {
-                OverlayWindow root = _parentOverlay;
-                if (root != null)
-                {
-                    Left = root.Left;
-                    if (ColorType == OverlayColor.Yellow)
-                    {
-                        Top = root.Top + root.Height + 10;
-                    }
-                    else if (ColorType == OverlayColor.Red)
-                    {
-                        Top = (root.YellowOverlay != null ? root.YellowOverlay.Top + root.YellowOverlay.Height + 10 : root.Top + root.Height + 10);
-                    }
-                }
+                _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
             }
         }
 
@@ -1100,15 +1041,7 @@ namespace TimerOverlay
         {
             ContextMenu menu = new ContextMenu();
 
-            string reselectText = "📐 トリミング範囲を再設定 (F9)";
-            if (ColorType == OverlayColor.Yellow) reselectText = "📐 黄枠のトリミング範囲を再設定";
-            else if (ColorType == OverlayColor.Red) reselectText = "📐 赤枠のトリミング範囲を再設定";
-
-            MenuItem reselectItem = new MenuItem { Header = reselectText };
-            reselectItem.Click += delegate { TriggerReselect(); };
-            menu.Items.Add(reselectItem);
-
-            // 多重起動メニュー
+            // 1. 多重起動メニュー（一番上に配置）
             MenuItem multiMenu = new MenuItem { Header = "多重起動" };
 
             MenuItem yellowItem = new MenuItem { Header = "黄枠", IsCheckable = true };
@@ -1129,7 +1062,44 @@ namespace TimerOverlay
 
             menu.Items.Add(new Separator());
 
-            MenuItem scaleMenu = new MenuItem { Header = "🔍 表示倍率" };
+            // 枠色に応じた薄い色合い（可視性を最優先にした上品な淡いブラシ）
+            System.Windows.Media.Color tintColor;
+            if (ColorType == OverlayColor.Yellow)
+            {
+                // 薄い黄色 (RGBA: 250, 204, 21, 45)
+                tintColor = System.Windows.Media.Color.FromArgb(45, 250, 204, 21);
+            }
+            else if (ColorType == OverlayColor.Red)
+            {
+                // 薄い赤色 (RGBA: 248, 113, 113, 40)
+                tintColor = System.Windows.Media.Color.FromArgb(40, 248, 113, 113);
+            }
+            else
+            {
+                // 薄い青色 (RGBA: 56, 189, 248, 40)
+                tintColor = System.Windows.Media.Color.FromArgb(40, 56, 189, 248);
+            }
+            SolidColorBrush tintBrush = new SolidColorBrush(tintColor);
+
+            // 2. トリミング範囲を再設定
+            string reselectText = "📐 トリミング範囲を再設定 (F9)";
+            if (ColorType == OverlayColor.Yellow) reselectText = "📐 黄枠のトリミング範囲を再設定";
+            else if (ColorType == OverlayColor.Red) reselectText = "📐 赤枠のトリミング範囲を再設定";
+
+            MenuItem reselectItem = new MenuItem
+            {
+                Header = reselectText,
+                Background = tintBrush
+            };
+            reselectItem.Click += delegate { TriggerReselect(); };
+            menu.Items.Add(reselectItem);
+
+            // 3. 表示倍率（枠ごとに独立）
+            MenuItem scaleMenu = new MenuItem
+            {
+                Header = "🔍 表示倍率",
+                Background = tintBrush
+            };
             double[] scales = new double[] { 1.0, 1.25, 1.5, 1.75, 2.0 };
             foreach (double sc in scales)
             {
@@ -1143,7 +1113,12 @@ namespace TimerOverlay
             }
             menu.Items.Add(scaleMenu);
 
-            MenuItem fpsMenu = new MenuItem { Header = "⚡ 更新レート (FPS)" };
+            // 4. 更新レート (FPS)（枠ごとに独立）
+            MenuItem fpsMenu = new MenuItem
+            {
+                Header = "⚡ 更新レート (FPS)",
+                Background = tintBrush
+            };
             int[] fpsList = new int[] { 30, 60, 90, 120 };
             foreach (int f in fpsList)
             {
@@ -1156,15 +1131,6 @@ namespace TimerOverlay
                 fpsMenu.Items.Add(m);
             }
             menu.Items.Add(fpsMenu);
-
-            menu.Items.Add(new Separator());
-
-            MenuItem resetPosItem = new MenuItem { Header = "📍 位置を画面中央下にリセット" };
-            resetPosItem.Click += delegate
-            {
-                ResetPosition();
-            };
-            menu.Items.Add(resetPosItem);
 
             menu.Items.Add(new Separator());
 
@@ -1191,20 +1157,24 @@ namespace TimerOverlay
                     yellowItem.IsChecked = (root.YellowOverlay != null && root.YellowOverlay.IsVisible);
                     redItem.IsChecked = (root.RedOverlay != null && root.RedOverlay.IsVisible);
                 }
+
+                double currentScale = _config.GetScale(ColorType);
                 foreach (object item in scaleMenu.Items)
                 {
                     MenuItem mi = item as MenuItem;
                     if (mi != null && mi.Tag is double)
                     {
-                        mi.IsChecked = Math.Abs(_config.Scale - (double)mi.Tag) < 0.01;
+                        mi.IsChecked = Math.Abs(currentScale - (double)mi.Tag) < 0.01;
                     }
                 }
+
+                int currentFps = _config.GetFps(ColorType);
                 foreach (object item in fpsMenu.Items)
                 {
                     MenuItem mi = item as MenuItem;
                     if (mi != null && mi.Tag is int)
                     {
-                        mi.IsChecked = (_config.TargetFps == (int)mi.Tag);
+                        mi.IsChecked = (currentFps == (int)mi.Tag);
                     }
                 }
             };
@@ -1232,17 +1202,16 @@ namespace TimerOverlay
 
         protected override void OnClosed(EventArgs e)
         {
+            if (_timer != null) _timer.Stop();
+            if (_capture != null) _capture.Dispose();
+
             if (IsPrimary)
             {
-                if (_timer != null) _timer.Stop();
                 if (_hwndSource != null)
                 {
                     NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9);
                     _hwndSource.RemoveHook(HwndHook);
                 }
-                if (_captureBlue != null) _captureBlue.Dispose();
-                if (_captureYellow != null) _captureYellow.Dispose();
-                if (_captureRed != null) _captureRed.Dispose();
                 if (YellowOverlay != null) { YellowOverlay.Close(); YellowOverlay = null; }
                 if (RedOverlay != null) { RedOverlay.Close(); RedOverlay = null; }
                 base.OnClosed(e);
