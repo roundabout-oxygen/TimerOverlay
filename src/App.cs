@@ -14,21 +14,22 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.5)
+// アセンブリ情報・バージョニング (v1.1.6)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.5.0")]
-[assembly: AssemblyFileVersion("1.1.5.0")]
-[assembly: AssemblyInformationalVersion("v1.1.5")]
+[assembly: AssemblyVersion("1.1.6.0")]
+[assembly: AssemblyFileVersion("1.1.6.0")]
+[assembly: AssemblyInformationalVersion("v1.1.6")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.5";
+        public const string CurrentVersion = "v1.1.6";
 
+        // メイン（青枠）
         public int CaptureX { get; set; }
         public int CaptureY { get; set; }
         public int CaptureW { get; set; }
@@ -37,6 +38,18 @@ namespace TimerOverlay
         public int OverlayY { get; set; }
         public double Scale { get; set; }
         public int TargetFps { get; set; }
+
+        // 黄枠用の独立キャプチャ座標
+        public int YellowCaptureX { get; set; }
+        public int YellowCaptureY { get; set; }
+        public int YellowCaptureW { get; set; }
+        public int YellowCaptureH { get; set; }
+
+        // 赤枠用の独立キャプチャ座標
+        public int RedCaptureX { get; set; }
+        public int RedCaptureY { get; set; }
+        public int RedCaptureW { get; set; }
+        public int RedCaptureH { get; set; }
 
         public Config()
         {
@@ -48,11 +61,62 @@ namespace TimerOverlay
             OverlayY = -1;
             Scale = 1.25;
             TargetFps = 60;
+
+            YellowCaptureX = -1;
+            YellowCaptureY = -1;
+            YellowCaptureW = -1;
+            YellowCaptureH = -1;
+
+            RedCaptureX = -1;
+            RedCaptureY = -1;
+            RedCaptureW = -1;
+            RedCaptureH = -1;
         }
 
         public bool HasCaptureRect
         {
             get { return CaptureW > 0 && CaptureH > 0 && CaptureX >= 0 && CaptureY >= 0; }
+        }
+
+        public bool HasCaptureRectFor(OverlayColor color)
+        {
+            if (color == OverlayColor.Yellow)
+                return YellowCaptureW > 0 && YellowCaptureH > 0 && YellowCaptureX >= 0 && YellowCaptureY >= 0;
+            if (color == OverlayColor.Red)
+                return RedCaptureW > 0 && RedCaptureH > 0 && RedCaptureX >= 0 && RedCaptureY >= 0;
+            return HasCaptureRect;
+        }
+
+        public void GetCaptureRect(OverlayColor color, out int x, out int y, out int w, out int h)
+        {
+            if (color == OverlayColor.Yellow && HasCaptureRectFor(OverlayColor.Yellow))
+            {
+                x = YellowCaptureX; y = YellowCaptureY; w = YellowCaptureW; h = YellowCaptureH;
+                return;
+            }
+            if (color == OverlayColor.Red && HasCaptureRectFor(OverlayColor.Red))
+            {
+                x = RedCaptureX; y = RedCaptureY; w = RedCaptureW; h = RedCaptureH;
+                return;
+            }
+            x = CaptureX; y = CaptureY; w = CaptureW; h = CaptureH;
+        }
+
+        public void SetCaptureRect(OverlayColor color, int x, int y, int w, int h)
+        {
+            if (color == OverlayColor.Yellow)
+            {
+                YellowCaptureX = x; YellowCaptureY = y; YellowCaptureW = w; YellowCaptureH = h;
+            }
+            else if (color == OverlayColor.Red)
+            {
+                RedCaptureX = x; RedCaptureY = y; RedCaptureW = w; RedCaptureH = h;
+            }
+            else
+            {
+                CaptureX = x; CaptureY = y; CaptureW = w; CaptureH = h;
+            }
+            Save();
         }
 
         private static string ConfigPath
@@ -76,6 +140,16 @@ namespace TimerOverlay
                     cfg.OverlayY = ExtractInt(json, "OverlayY", -1);
                     cfg.Scale = ExtractDouble(json, "Scale", 1.25);
                     cfg.TargetFps = ExtractInt(json, "TargetFps", 60);
+
+                    cfg.YellowCaptureX = ExtractInt(json, "YellowCaptureX", -1);
+                    cfg.YellowCaptureY = ExtractInt(json, "YellowCaptureY", -1);
+                    cfg.YellowCaptureW = ExtractInt(json, "YellowCaptureW", -1);
+                    cfg.YellowCaptureH = ExtractInt(json, "YellowCaptureH", -1);
+
+                    cfg.RedCaptureX = ExtractInt(json, "RedCaptureX", -1);
+                    cfg.RedCaptureY = ExtractInt(json, "RedCaptureY", -1);
+                    cfg.RedCaptureW = ExtractInt(json, "RedCaptureW", -1);
+                    cfg.RedCaptureH = ExtractInt(json, "RedCaptureH", -1);
 
                     // 互換性パース
                     if (cfg.CaptureW <= 0)
@@ -139,7 +213,15 @@ namespace TimerOverlay
                 sb.AppendLine(string.Format("  \"OverlayX\": {0},", OverlayX));
                 sb.AppendLine(string.Format("  \"OverlayY\": {0},", OverlayY));
                 sb.AppendLine(string.Format("  \"Scale\": {0},", Scale.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
-                sb.AppendLine(string.Format("  \"TargetFps\": {0}", TargetFps));
+                sb.AppendLine(string.Format("  \"TargetFps\": {0},", TargetFps));
+                sb.AppendLine(string.Format("  \"YellowCaptureX\": {0},", YellowCaptureX));
+                sb.AppendLine(string.Format("  \"YellowCaptureY\": {0},", YellowCaptureY));
+                sb.AppendLine(string.Format("  \"YellowCaptureW\": {0},", YellowCaptureW));
+                sb.AppendLine(string.Format("  \"YellowCaptureH\": {0},", YellowCaptureH));
+                sb.AppendLine(string.Format("  \"RedCaptureX\": {0},", RedCaptureX));
+                sb.AppendLine(string.Format("  \"RedCaptureY\": {0},", RedCaptureY));
+                sb.AppendLine(string.Format("  \"RedCaptureW\": {0},", RedCaptureW));
+                sb.AppendLine(string.Format("  \"RedCaptureH\": {0}", RedCaptureH));
                 sb.AppendLine("}");
                 File.WriteAllText(ConfigPath, sb.ToString());
             }
@@ -564,7 +646,7 @@ namespace TimerOverlay
         public OverlayWindow YellowOverlay { get; set; }
         public OverlayWindow RedOverlay { get; set; }
 
-        public event Action RequestReselect;
+        public event Action<OverlayColor> RequestReselectFor;
 
         public OverlayWindow(Config config, OverlayColor color = OverlayColor.Blue, OverlayWindow parentOverlay = null)
         {
@@ -784,11 +866,13 @@ namespace TimerOverlay
 
         public void ApplyLayout()
         {
-            if (!_config.HasCaptureRect) return;
+            int cx, cy, cw, ch;
+            _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
+            if (cw <= 0 || ch <= 0) return;
 
             int pad = 8;
-            Width = (_config.CaptureW * _config.Scale) + pad;
-            Height = (_config.CaptureH * _config.Scale) + pad;
+            Width = (cw * _config.Scale) + pad;
+            Height = (ch * _config.Scale) + pad;
 
             if (IsPrimary)
             {
@@ -810,18 +894,63 @@ namespace TimerOverlay
 
         private void UpdateFrame()
         {
-            if (!_config.HasCaptureRect) return;
-            BitmapSource bs = _capture.Capture(_config.CaptureX, _config.CaptureY, _config.CaptureW, _config.CaptureH);
-            if (bs != null)
+            if (IsPrimary)
             {
-                _displayImage.Source = bs;
+                // 1. 青枠（メイン）のキャプチャ
+                int bx, by, bw, bh;
+                _config.GetCaptureRect(OverlayColor.Blue, out bx, out by, out bw, out bh);
+                BitmapSource bsBlue = null;
+                if (bw > 0 && bh > 0 && bx >= 0 && by >= 0)
+                {
+                    bsBlue = _capture.Capture(bx, by, bw, bh);
+                    if (bsBlue != null)
+                    {
+                        _displayImage.Source = bsBlue;
+                    }
+                }
+
+                // 2. 黄枠のキャプチャ（独立領域）
                 if (YellowOverlay != null && YellowOverlay.IsVisible)
                 {
-                    YellowOverlay.SetFrame(bs);
+                    int yx, yy, yw, yh;
+                    _config.GetCaptureRect(OverlayColor.Yellow, out yx, out yy, out yw, out yh);
+                    if (yw > 0 && yh > 0 && yx >= 0 && yy >= 0)
+                    {
+                        if (yx == bx && yy == by && yw == bw && yh == bh && bsBlue != null)
+                        {
+                            YellowOverlay.SetFrame(bsBlue);
+                        }
+                        else
+                        {
+                            BitmapSource bsYellow = _capture.Capture(yx, yy, yw, yh);
+                            if (bsYellow != null)
+                            {
+                                YellowOverlay.SetFrame(bsYellow);
+                            }
+                        }
+                    }
                 }
+
+                // 3. 赤枠のキャプチャ（独立領域）
                 if (RedOverlay != null && RedOverlay.IsVisible)
                 {
-                    RedOverlay.SetFrame(bs);
+                    int rx, ry, rw, rh;
+                    _config.GetCaptureRect(OverlayColor.Red, out rx, out ry, out rw, out rh);
+                    if (rw > 0 && rh > 0 && rx >= 0 && ry >= 0)
+                    {
+                        if (rx == bx && ry == by && rw == bw && rh == bh && bsBlue != null)
+                        {
+                            RedOverlay.SetFrame(bsBlue);
+                        }
+                        else
+                        {
+                            BitmapSource bsRed = _capture.Capture(rx, ry, rw, rh);
+                            if (bsRed != null)
+                            {
+                                RedOverlay.SetFrame(bsRed);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -829,9 +958,9 @@ namespace TimerOverlay
         public void TriggerReselect()
         {
             OverlayWindow root = IsPrimary ? this : _parentOverlay;
-            if (root != null && root.RequestReselect != null)
+            if (root != null && root.RequestReselectFor != null)
             {
-                root.RequestReselect();
+                root.RequestReselectFor(this.ColorType);
             }
         }
 
@@ -963,7 +1092,11 @@ namespace TimerOverlay
         {
             ContextMenu menu = new ContextMenu();
 
-            MenuItem reselectItem = new MenuItem { Header = "📐 トリミング範囲を再設定 (F9)" };
+            string reselectText = "📐 トリミング範囲を再設定 (F9)";
+            if (ColorType == OverlayColor.Yellow) reselectText = "📐 黄枠のトリミング範囲を再設定";
+            else if (ColorType == OverlayColor.Red) reselectText = "📐 赤枠のトリミング範囲を再設定";
+
+            MenuItem reselectItem = new MenuItem { Header = reselectText };
             reselectItem.Click += delegate { TriggerReselect(); };
             menu.Items.Add(reselectItem);
 
@@ -1076,7 +1209,14 @@ namespace TimerOverlay
             const int WM_HOTKEY = 0x0312;
             if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID_F9)
             {
-                TriggerReselect();
+                OverlayColor target = OverlayColor.Blue;
+                if (YellowOverlay != null && YellowOverlay.IsActive) target = OverlayColor.Yellow;
+                else if (RedOverlay != null && RedOverlay.IsActive) target = OverlayColor.Red;
+
+                if (RequestReselectFor != null)
+                {
+                    RequestReselectFor(target);
+                }
                 handled = true;
             }
             return IntPtr.Zero;
@@ -1131,8 +1271,8 @@ namespace TimerOverlay
                 Config config = Config.Load();
                 OverlayWindow overlay = null;
 
-                Action startSelection = null;
-                startSelection = delegate
+                Action<OverlayColor> startSelection = null;
+                startSelection = delegate(OverlayColor targetColor)
                 {
                     if (overlay != null)
                     {
@@ -1144,33 +1284,39 @@ namespace TimerOverlay
                     AreaSelectorWindow selector = new AreaSelectorWindow();
                     selector.AreaSelected += delegate(int x, int y, int w, int h)
                     {
-                        config.CaptureX = x;
-                        config.CaptureY = y;
-                        config.CaptureW = w;
-                        config.CaptureH = h;
-                        config.Save();
+                        config.SetCaptureRect(targetColor, x, y, w, h);
 
-                        if (overlay == null)
+                        if (targetColor == OverlayColor.Blue)
                         {
-                            overlay = new OverlayWindow(config);
-                            overlay.RequestReselect += delegate { startSelection(); };
-                            app.MainWindow = overlay;
+                            if (overlay == null)
+                            {
+                                overlay = new OverlayWindow(config);
+                                overlay.RequestReselectFor += delegate(OverlayColor c) { startSelection(c); };
+                                app.MainWindow = overlay;
+                            }
+                            else
+                            {
+                                overlay.ApplyLayout();
+                            }
                         }
-                        else
+                        else if (targetColor == OverlayColor.Yellow)
                         {
-                            overlay.ApplyLayout();
+                            if (overlay != null && overlay.YellowOverlay != null)
+                            {
+                                overlay.YellowOverlay.ApplyLayout();
+                            }
                         }
-                        overlay.Show();
-                        if (overlay.YellowOverlay != null)
+                        else if (targetColor == OverlayColor.Red)
                         {
-                            overlay.YellowOverlay.ApplyLayout();
-                            overlay.YellowOverlay.Show();
+                            if (overlay != null && overlay.RedOverlay != null)
+                            {
+                                overlay.RedOverlay.ApplyLayout();
+                            }
                         }
-                        if (overlay.RedOverlay != null)
-                        {
-                            overlay.RedOverlay.ApplyLayout();
-                            overlay.RedOverlay.Show();
-                        }
+
+                        if (overlay != null) overlay.Show();
+                        if (overlay != null && overlay.YellowOverlay != null) overlay.YellowOverlay.Show();
+                        if (overlay != null && overlay.RedOverlay != null) overlay.RedOverlay.Show();
                     };
 
                     selector.SelectionCancelled += delegate
@@ -1186,7 +1332,7 @@ namespace TimerOverlay
                             MessageBoxResult res = MessageBox.Show("範囲が選択されていません。\nもう一度選択しますか？", "確認", MessageBoxButton.YesNo, MessageBoxImage.Question);
                             if (res == MessageBoxResult.Yes)
                             {
-                                startSelection();
+                                startSelection(targetColor);
                             }
                             else
                             {
@@ -1201,13 +1347,13 @@ namespace TimerOverlay
                 if (config.HasCaptureRect)
                 {
                     overlay = new OverlayWindow(config);
-                    overlay.RequestReselect += delegate { startSelection(); };
+                    overlay.RequestReselectFor += delegate(OverlayColor c) { startSelection(c); };
                     app.MainWindow = overlay;
                     overlay.Show();
                 }
                 else
                 {
-                    startSelection();
+                    startSelection(OverlayColor.Blue);
                 }
 
                 app.Run();
