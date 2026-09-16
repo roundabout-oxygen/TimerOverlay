@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Building Timer Overlay (v1.1.4)
+echo   Building Timer Overlay (v1.1.5)
 echo ========================================================
 
 set CSC=C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe

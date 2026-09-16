@@ -14,20 +14,20 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.4)
+// アセンブリ情報・バージョニング (v1.1.5)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.4.0")]
-[assembly: AssemblyFileVersion("1.1.4.0")]
-[assembly: AssemblyInformationalVersion("v1.1.4")]
+[assembly: AssemblyVersion("1.1.5.0")]
+[assembly: AssemblyFileVersion("1.1.5.0")]
+[assembly: AssemblyInformationalVersion("v1.1.5")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.4";
+        public const string CurrentVersion = "v1.1.5";
 
         public int CaptureX { get; set; }
         public int CaptureY { get; set; }
@@ -537,6 +537,13 @@ namespace TimerOverlay
         }
     }
 
+    public enum OverlayColor
+    {
+        Blue,
+        Yellow,
+        Red
+    }
+
     // --- 最前面オーバーレイウィンドウ ---
     public class OverlayWindow : Window
     {
@@ -547,25 +554,76 @@ namespace TimerOverlay
         private HwndSource _hwndSource;
         private const int HOTKEY_ID_F9 = 9001;
 
+        private Border _closeBtn;
+        private Border _reselectBtn;
+
+        public OverlayColor ColorType { get; private set; }
+        public bool IsPrimary { get { return ColorType == OverlayColor.Blue; } }
+        private OverlayWindow _parentOverlay;
+
+        public OverlayWindow YellowOverlay { get; set; }
+        public OverlayWindow RedOverlay { get; set; }
+
         public event Action RequestReselect;
 
-        public OverlayWindow(Config config)
+        public OverlayWindow(Config config, OverlayColor color = OverlayColor.Blue, OverlayWindow parentOverlay = null)
         {
             _config = config;
-            _capture = new ScreenCapture();
+            ColorType = color;
+            _parentOverlay = parentOverlay;
 
-            Title = "ブルアカ 残り時間オーバーレイ";
+            if (IsPrimary)
+            {
+                _capture = new ScreenCapture();
+            }
+
+            switch (ColorType)
+            {
+                case OverlayColor.Yellow:
+                    Title = "タイマーオーバーレイ (黄枠)";
+                    break;
+                case OverlayColor.Red:
+                    Title = "タイマーオーバーレイ (赤枠)";
+                    break;
+                default:
+                    Title = "タイマーオーバーレイ";
+                    break;
+            }
+
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
             Background = System.Windows.Media.Brushes.Transparent; // ウィンドウ自体の四隅を完全透過
             Topmost = true;
             ShowInTaskbar = true;
 
-            // 角丸メインボーダー (シアン枠線と角丸半透明背景)
+            // 枠色・背景色の設定
+            System.Windows.Media.Color borderColor;
+            System.Windows.Media.Color bgColor;
+            System.Windows.Media.Color reselectBtnColor;
+
+            if (ColorType == OverlayColor.Yellow)
+            {
+                borderColor = System.Windows.Media.Color.FromArgb(230, 250, 204, 21); // 黄色枠
+                bgColor = System.Windows.Media.Color.FromArgb(190, 24, 22, 14);
+                reselectBtnColor = System.Windows.Media.Color.FromArgb(210, 202, 138, 4);
+            }
+            else if (ColorType == OverlayColor.Red)
+            {
+                borderColor = System.Windows.Media.Color.FromArgb(230, 248, 113, 113); // 赤色枠
+                bgColor = System.Windows.Media.Color.FromArgb(190, 26, 17, 17);
+                reselectBtnColor = System.Windows.Media.Color.FromArgb(210, 220, 38, 38);
+            }
+            else
+            {
+                borderColor = System.Windows.Media.Color.FromArgb(180, 0, 210, 255); // 青枠（デフォルト）
+                bgColor = System.Windows.Media.Color.FromArgb(190, 15, 23, 42);
+                reselectBtnColor = System.Windows.Media.Color.FromArgb(200, 2, 132, 199);
+            }
+
             Border mainBorder = new Border
             {
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(190, 15, 23, 42)),
-                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 0, 210, 255)),
+                Background = new SolidColorBrush(bgColor),
+                BorderBrush = new SolidColorBrush(borderColor),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(7),
                 ClipToBounds = true
@@ -589,8 +647,8 @@ namespace TimerOverlay
             RenderOptions.SetBitmapScalingMode(_displayImage, BitmapScalingMode.HighQuality);
             imgContainer.Child = _displayImage;
 
-            // 右上の [×] 閉じるボタン
-            Border closeBtn = new Border
+            // 右上の [×] 閉じるボタン（アクティブ時のみ表示）
+            _closeBtn = new Border
             {
                 Width = 18,
                 Height = 18,
@@ -599,7 +657,8 @@ namespace TimerOverlay
                 Margin = new Thickness(0, 2, 2, 0),
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(200, 239, 68, 68)),
                 CornerRadius = new CornerRadius(3),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Visibility = Visibility.Collapsed
             };
             TextBlock closeText = new TextBlock
             {
@@ -610,24 +669,32 @@ namespace TimerOverlay
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            closeBtn.Child = closeText;
-            closeBtn.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
+            _closeBtn.Child = closeText;
+            _closeBtn.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
             {
                 e.Handled = true;
-                Application.Current.Shutdown();
+                if (IsPrimary)
+                {
+                    Application.Current.Shutdown();
+                }
+                else
+                {
+                    Close();
+                }
             };
 
-            // 左上の [📐] 再設定ボタン
-            Border reselectBtn = new Border
+            // 左上の [📐] 再設定ボタン（アクティブ時のみ表示）
+            _reselectBtn = new Border
             {
                 Width = 18,
                 Height = 18,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(2, 2, 0, 0),
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(200, 2, 132, 199)),
+                Background = new SolidColorBrush(reselectBtnColor),
                 CornerRadius = new CornerRadius(3),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Visibility = Visibility.Collapsed
             };
             TextBlock reselectText = new TextBlock
             {
@@ -637,28 +704,45 @@ namespace TimerOverlay
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            reselectBtn.Child = reselectText;
-            reselectBtn.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
+            _reselectBtn.Child = reselectText;
+            _reselectBtn.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
             {
                 e.Handled = true;
-                if (RequestReselect != null) RequestReselect();
+                TriggerReselect();
             };
 
             innerGrid.Children.Add(imgContainer);
-            innerGrid.Children.Add(closeBtn);
-            innerGrid.Children.Add(reselectBtn);
+            innerGrid.Children.Add(_closeBtn);
+            innerGrid.Children.Add(_reselectBtn);
 
             mainBorder.Child = innerGrid;
             Content = mainBorder;
+
+            // アクティブ・非アクティブの切り替えでボタンの表示/非表示を自動更新
+            Activated += delegate { UpdateButtonsVisibility(); };
+            Deactivated += delegate { UpdateButtonsVisibility(); };
+            Loaded += delegate { UpdateButtonsVisibility(); };
+
+            PreviewMouseDown += delegate
+            {
+                if (!IsActive)
+                {
+                    Activate();
+                    UpdateButtonsVisibility();
+                }
+            };
 
             MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
             {
                 if (e.ButtonState == MouseButtonState.Pressed)
                 {
                     DragMove();
-                    _config.OverlayX = (int)Left;
-                    _config.OverlayY = (int)Top;
-                    _config.Save();
+                    if (IsPrimary)
+                    {
+                        _config.OverlayX = (int)Left;
+                        _config.OverlayY = (int)Top;
+                        _config.Save();
+                    }
                 }
             };
 
@@ -666,18 +750,36 @@ namespace TimerOverlay
 
             ApplyLayout();
 
-            _timer = new DispatcherTimer(DispatcherPriority.Render);
-            int fps = Math.Max(30, Math.Min(144, _config.TargetFps));
-            _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
-            _timer.Tick += delegate { UpdateFrame(); };
-
-            Loaded += delegate
+            if (IsPrimary)
             {
-                _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
-                _hwndSource.AddHook(HwndHook);
-                NativeMethods.RegisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9, 0, 0x78); // F9
-                _timer.Start();
-            };
+                _timer = new DispatcherTimer(DispatcherPriority.Render);
+                int fps = Math.Max(30, Math.Min(144, _config.TargetFps));
+                _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
+                _timer.Tick += delegate { UpdateFrame(); };
+
+                Loaded += delegate
+                {
+                    _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+                    _hwndSource.AddHook(HwndHook);
+                    NativeMethods.RegisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9, 0, 0x78); // F9
+                    _timer.Start();
+                };
+            }
+        }
+
+        private void UpdateButtonsVisibility()
+        {
+            Visibility v = IsActive ? Visibility.Visible : Visibility.Collapsed;
+            if (_closeBtn != null) _closeBtn.Visibility = v;
+            if (_reselectBtn != null) _reselectBtn.Visibility = v;
+        }
+
+        public void SetFrame(BitmapSource bs)
+        {
+            if (_displayImage != null)
+            {
+                _displayImage.Source = bs;
+            }
         }
 
         public void ApplyLayout()
@@ -688,18 +790,21 @@ namespace TimerOverlay
             Width = (_config.CaptureW * _config.Scale) + pad;
             Height = (_config.CaptureH * _config.Scale) + pad;
 
-            if (_config.OverlayX >= 0 && _config.OverlayY >= 0)
+            if (IsPrimary)
             {
-                Left = _config.OverlayX;
-                Top = _config.OverlayY;
-            }
-            else
-            {
-                Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
-                Top = SystemParameters.PrimaryScreenHeight - Height - 70;
-                _config.OverlayX = (int)Left;
-                _config.OverlayY = (int)Top;
-                _config.Save();
+                if (_config.OverlayX >= 0 && _config.OverlayY >= 0)
+                {
+                    Left = _config.OverlayX;
+                    Top = _config.OverlayY;
+                }
+                else
+                {
+                    Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
+                    Top = SystemParameters.PrimaryScreenHeight - Height - 70;
+                    _config.OverlayX = (int)Left;
+                    _config.OverlayY = (int)Top;
+                    _config.Save();
+                }
             }
         }
 
@@ -710,6 +815,147 @@ namespace TimerOverlay
             if (bs != null)
             {
                 _displayImage.Source = bs;
+                if (YellowOverlay != null && YellowOverlay.IsVisible)
+                {
+                    YellowOverlay.SetFrame(bs);
+                }
+                if (RedOverlay != null && RedOverlay.IsVisible)
+                {
+                    RedOverlay.SetFrame(bs);
+                }
+            }
+        }
+
+        public void TriggerReselect()
+        {
+            OverlayWindow root = IsPrimary ? this : _parentOverlay;
+            if (root != null && root.RequestReselect != null)
+            {
+                root.RequestReselect();
+            }
+        }
+
+        public void SetScale(double scale)
+        {
+            OverlayWindow root = IsPrimary ? this : _parentOverlay;
+            if (root != null)
+            {
+                root._config.Scale = scale;
+                root._config.Save();
+                root.ApplyLayout();
+                if (root.YellowOverlay != null) root.YellowOverlay.ApplyLayout();
+                if (root.RedOverlay != null) root.RedOverlay.ApplyLayout();
+            }
+        }
+
+        public void SetFps(int fps)
+        {
+            OverlayWindow root = IsPrimary ? this : _parentOverlay;
+            if (root != null)
+            {
+                root._config.TargetFps = fps;
+                root._config.Save();
+                if (root._timer != null)
+                {
+                    root._timer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
+                }
+            }
+        }
+
+        public void ResetPosition()
+        {
+            if (IsPrimary)
+            {
+                Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
+                Top = SystemParameters.PrimaryScreenHeight - Height - 70;
+                _config.OverlayX = (int)Left;
+                _config.OverlayY = (int)Top;
+                _config.Save();
+                if (YellowOverlay != null)
+                {
+                    YellowOverlay.Left = Left;
+                    YellowOverlay.Top = Top + Height + 10;
+                }
+                if (RedOverlay != null)
+                {
+                    RedOverlay.Left = Left;
+                    RedOverlay.Top = (YellowOverlay != null ? YellowOverlay.Top + YellowOverlay.Height + 10 : Top + Height + 10);
+                }
+            }
+            else
+            {
+                OverlayWindow root = _parentOverlay;
+                if (root != null)
+                {
+                    Left = root.Left;
+                    if (ColorType == OverlayColor.Yellow)
+                    {
+                        Top = root.Top + root.Height + 10;
+                    }
+                    else if (ColorType == OverlayColor.Red)
+                    {
+                        Top = (root.YellowOverlay != null ? root.YellowOverlay.Top + root.YellowOverlay.Height + 10 : root.Top + root.Height + 10);
+                    }
+                }
+            }
+        }
+
+        public void ToggleYellowOverlay(bool enable)
+        {
+            OverlayWindow root = IsPrimary ? this : _parentOverlay;
+            if (root == null) return;
+
+            if (enable)
+            {
+                if (root.YellowOverlay == null)
+                {
+                    root.YellowOverlay = new OverlayWindow(_config, OverlayColor.Yellow, root);
+                    root.YellowOverlay.Closed += delegate { root.YellowOverlay = null; };
+                    root.YellowOverlay.Left = root.Left;
+                    root.YellowOverlay.Top = root.Top + root.Height + 10;
+                    root.YellowOverlay.Show();
+                }
+            }
+            else
+            {
+                if (root.YellowOverlay != null)
+                {
+                    root.YellowOverlay.Close();
+                    root.YellowOverlay = null;
+                }
+            }
+        }
+
+        public void ToggleRedOverlay(bool enable)
+        {
+            OverlayWindow root = IsPrimary ? this : _parentOverlay;
+            if (root == null) return;
+
+            if (enable)
+            {
+                if (root.RedOverlay == null)
+                {
+                    root.RedOverlay = new OverlayWindow(_config, OverlayColor.Red, root);
+                    root.RedOverlay.Closed += delegate { root.RedOverlay = null; };
+                    root.RedOverlay.Left = root.Left;
+                    if (root.YellowOverlay != null && root.YellowOverlay.IsVisible)
+                    {
+                        root.RedOverlay.Top = root.YellowOverlay.Top + root.YellowOverlay.Height + 10;
+                    }
+                    else
+                    {
+                        root.RedOverlay.Top = root.Top + root.Height + 10;
+                    }
+                    root.RedOverlay.Show();
+                }
+            }
+            else
+            {
+                if (root.RedOverlay != null)
+                {
+                    root.RedOverlay.Close();
+                    root.RedOverlay = null;
+                }
             }
         }
 
@@ -718,20 +964,39 @@ namespace TimerOverlay
             ContextMenu menu = new ContextMenu();
 
             MenuItem reselectItem = new MenuItem { Header = "📐 トリミング範囲を再設定 (F9)" };
-            reselectItem.Click += delegate { if (RequestReselect != null) RequestReselect(); };
+            reselectItem.Click += delegate { TriggerReselect(); };
             menu.Items.Add(reselectItem);
+
+            // 多重起動メニュー
+            MenuItem multiMenu = new MenuItem { Header = "多重起動" };
+
+            MenuItem yellowItem = new MenuItem { Header = "黄枠", IsCheckable = true };
+            yellowItem.Click += delegate(object sender, RoutedEventArgs e)
+            {
+                ToggleYellowOverlay(yellowItem.IsChecked);
+            };
+            multiMenu.Items.Add(yellowItem);
+
+            MenuItem redItem = new MenuItem { Header = "赤枠", IsCheckable = true };
+            redItem.Click += delegate(object sender, RoutedEventArgs e)
+            {
+                ToggleRedOverlay(redItem.IsChecked);
+            };
+            multiMenu.Items.Add(redItem);
+
+            menu.Items.Add(multiMenu);
+
+            menu.Items.Add(new Separator());
 
             MenuItem scaleMenu = new MenuItem { Header = "🔍 表示倍率" };
             double[] scales = new double[] { 1.0, 1.25, 1.5, 1.75, 2.0 };
             foreach (double sc in scales)
             {
-                MenuItem m = new MenuItem { Header = string.Format("{0}%", (int)(sc * 100)), IsCheckable = true, IsChecked = Math.Abs(_config.Scale - sc) < 0.01 };
+                MenuItem m = new MenuItem { Header = string.Format("{0}%", (int)(sc * 100)), IsCheckable = true, Tag = sc };
                 double localScale = sc;
                 m.Click += delegate
                 {
-                    _config.Scale = localScale;
-                    _config.Save();
-                    ApplyLayout();
+                    SetScale(localScale);
                 };
                 scaleMenu.Items.Add(m);
             }
@@ -741,13 +1006,11 @@ namespace TimerOverlay
             int[] fpsList = new int[] { 30, 60, 90, 120 };
             foreach (int f in fpsList)
             {
-                MenuItem m = new MenuItem { Header = string.Format("{0} FPS", f), IsCheckable = true, IsChecked = _config.TargetFps == f };
+                MenuItem m = new MenuItem { Header = string.Format("{0} FPS", f), IsCheckable = true, Tag = f };
                 int localFps = f;
                 m.Click += delegate
                 {
-                    _config.TargetFps = localFps;
-                    _config.Save();
-                    _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / localFps);
+                    SetFps(localFps);
                 };
                 fpsMenu.Items.Add(m);
             }
@@ -758,11 +1021,7 @@ namespace TimerOverlay
             MenuItem resetPosItem = new MenuItem { Header = "📍 位置を画面中央下にリセット" };
             resetPosItem.Click += delegate
             {
-                Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
-                Top = SystemParameters.PrimaryScreenHeight - Height - 70;
-                _config.OverlayX = (int)Left;
-                _config.OverlayY = (int)Top;
-                _config.Save();
+                ResetPosition();
             };
             menu.Items.Add(resetPosItem);
 
@@ -782,6 +1041,33 @@ namespace TimerOverlay
             exitItem.Click += delegate { Application.Current.Shutdown(); };
             menu.Items.Add(exitItem);
 
+            // メニューが開く直前にチェック状態を最新化
+            menu.Opened += delegate
+            {
+                OverlayWindow root = IsPrimary ? this : _parentOverlay;
+                if (root != null)
+                {
+                    yellowItem.IsChecked = (root.YellowOverlay != null && root.YellowOverlay.IsVisible);
+                    redItem.IsChecked = (root.RedOverlay != null && root.RedOverlay.IsVisible);
+                }
+                foreach (object item in scaleMenu.Items)
+                {
+                    MenuItem mi = item as MenuItem;
+                    if (mi != null && mi.Tag is double)
+                    {
+                        mi.IsChecked = Math.Abs(_config.Scale - (double)mi.Tag) < 0.01;
+                    }
+                }
+                foreach (object item in fpsMenu.Items)
+                {
+                    MenuItem mi = item as MenuItem;
+                    if (mi != null && mi.Tag is int)
+                    {
+                        mi.IsChecked = (_config.TargetFps == (int)mi.Tag);
+                    }
+                }
+            };
+
             return menu;
         }
 
@@ -790,7 +1076,7 @@ namespace TimerOverlay
             const int WM_HOTKEY = 0x0312;
             if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID_F9)
             {
-                if (RequestReselect != null) RequestReselect();
+                TriggerReselect();
                 handled = true;
             }
             return IntPtr.Zero;
@@ -798,15 +1084,24 @@ namespace TimerOverlay
 
         protected override void OnClosed(EventArgs e)
         {
-            if (_timer != null) _timer.Stop();
-            if (_hwndSource != null)
+            if (IsPrimary)
             {
-                NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9);
-                _hwndSource.RemoveHook(HwndHook);
+                if (_timer != null) _timer.Stop();
+                if (_hwndSource != null)
+                {
+                    NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9);
+                    _hwndSource.RemoveHook(HwndHook);
+                }
+                if (_capture != null) _capture.Dispose();
+                if (YellowOverlay != null) { YellowOverlay.Close(); YellowOverlay = null; }
+                if (RedOverlay != null) { RedOverlay.Close(); RedOverlay = null; }
+                base.OnClosed(e);
+                Application.Current.Shutdown();
             }
-            if (_capture != null) _capture.Dispose();
-            base.OnClosed(e);
-            Application.Current.Shutdown();
+            else
+            {
+                base.OnClosed(e);
+            }
         }
     }
 
@@ -842,6 +1137,8 @@ namespace TimerOverlay
                     if (overlay != null)
                     {
                         overlay.Hide();
+                        if (overlay.YellowOverlay != null) overlay.YellowOverlay.Hide();
+                        if (overlay.RedOverlay != null) overlay.RedOverlay.Hide();
                     }
 
                     AreaSelectorWindow selector = new AreaSelectorWindow();
@@ -864,6 +1161,16 @@ namespace TimerOverlay
                             overlay.ApplyLayout();
                         }
                         overlay.Show();
+                        if (overlay.YellowOverlay != null)
+                        {
+                            overlay.YellowOverlay.ApplyLayout();
+                            overlay.YellowOverlay.Show();
+                        }
+                        if (overlay.RedOverlay != null)
+                        {
+                            overlay.RedOverlay.ApplyLayout();
+                            overlay.RedOverlay.Show();
+                        }
                     };
 
                     selector.SelectionCancelled += delegate
@@ -871,6 +1178,8 @@ namespace TimerOverlay
                         if (config.HasCaptureRect && overlay != null)
                         {
                             overlay.Show();
+                            if (overlay.YellowOverlay != null) overlay.YellowOverlay.Show();
+                            if (overlay.RedOverlay != null) overlay.RedOverlay.Show();
                         }
                         else
                         {
