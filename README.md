@@ -20,8 +20,10 @@
 ## 📥 ダウンロード (Download)
 
 [![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.8)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
+[![Download TimerOverlay-v1.1.8.exe](https://img.shields.io/badge/▶%20Download-TimerOverlay--v1.1.8.exe-0969da?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/TimerOverlay-v1.1.8.exe)
 
-> 👆 **上記のボタンをクリックすると、最新版 `timer_overlay.exe`（約26KB）を直接ダウンロードできます。**  
+> 👆 **上記のボタンをクリックすると、最新版実行ファイル（約36KB）を直接ダウンロードできます。**  
+> ※`timer_overlay.exe` と `TimerOverlay-v1.1.8.exe` の中身は同一です（ファイル名にバージョンを含むかどうかの違いのみ）。  
 > ※ZIPの展開やインストーラーの実行は一切不要です。ダウンロードした `.exe` をダブルクリックするだけで即座に動作します。
 
 ---

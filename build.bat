@@ -23,5 +23,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [SUCCESS] Built successfully: release\timer_overlay.exe
+copy /y release\timer_overlay.exe release\TimerOverlay-v1.1.8.exe >nul
+echo [SUCCESS] Built successfully: release\timer_overlay.exe (and release\TimerOverlay-v1.1.8.exe)
 endlocal
