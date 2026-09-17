@@ -14,20 +14,20 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.9)
+// アセンブリ情報・バージョニング (v1.1.10)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.9.0")]
-[assembly: AssemblyFileVersion("1.1.9.0")]
-[assembly: AssemblyInformationalVersion("v1.1.9")]
+[assembly: AssemblyVersion("1.1.10.0")]
+[assembly: AssemblyFileVersion("1.1.10.0")]
+[assembly: AssemblyInformationalVersion("v1.1.10")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.9";
+        public const string CurrentVersion = "v1.1.10";
 
         // メイン（青枠）
         public int CaptureX { get; set; }
@@ -38,22 +38,25 @@ namespace TimerOverlay
         public int OverlayY { get; set; }
         public double Scale { get; set; }
         public int TargetFps { get; set; }
+        public string StaticImagePath { get; set; }
 
-        // 黄枠用の独立キャプチャ座標・倍率・FPS
+        // 黄枠用の独立キャプチャ座標・倍率・FPS・静止画
         public int YellowCaptureX { get; set; }
         public int YellowCaptureY { get; set; }
         public int YellowCaptureW { get; set; }
         public int YellowCaptureH { get; set; }
         public double YellowScale { get; set; }
         public int YellowTargetFps { get; set; }
+        public string YellowStaticImagePath { get; set; }
 
-        // 赤枠用の独立キャプチャ座標・倍率・FPS
+        // 赤枠用の独立キャプチャ座標・倍率・FPS・静止画
         public int RedCaptureX { get; set; }
         public int RedCaptureY { get; set; }
         public int RedCaptureW { get; set; }
         public int RedCaptureH { get; set; }
         public double RedScale { get; set; }
         public int RedTargetFps { get; set; }
+        public string RedStaticImagePath { get; set; }
 
         public Config()
         {
@@ -79,6 +82,10 @@ namespace TimerOverlay
             RedCaptureH = -1;
             RedScale = 1.25;
             RedTargetFps = 60;
+
+            StaticImagePath = null;
+            YellowStaticImagePath = null;
+            RedStaticImagePath = null;
         }
 
         public bool HasCaptureRect
@@ -157,6 +164,21 @@ namespace TimerOverlay
             Save();
         }
 
+        public string GetStaticImagePath(OverlayColor color)
+        {
+            if (color == OverlayColor.Yellow) return YellowStaticImagePath;
+            if (color == OverlayColor.Red) return RedStaticImagePath;
+            return StaticImagePath;
+        }
+
+        public void SetStaticImagePath(OverlayColor color, string path)
+        {
+            if (color == OverlayColor.Yellow) YellowStaticImagePath = path;
+            else if (color == OverlayColor.Red) RedStaticImagePath = path;
+            else StaticImagePath = path;
+            Save();
+        }
+
         private static string ConfigPath
         {
             get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json"); }
@@ -192,6 +214,10 @@ namespace TimerOverlay
                     cfg.RedCaptureH = ExtractInt(json, "RedCaptureH", -1);
                     cfg.RedScale = ExtractDouble(json, "RedScale", 1.25);
                     cfg.RedTargetFps = ExtractInt(json, "RedTargetFps", 60);
+
+                    cfg.StaticImagePath = ExtractString(json, "StaticImagePath", null);
+                    cfg.YellowStaticImagePath = ExtractString(json, "YellowStaticImagePath", null);
+                    cfg.RedStaticImagePath = ExtractString(json, "RedStaticImagePath", null);
 
                     // 互換性パース
                     if (cfg.CaptureW <= 0)
@@ -267,7 +293,10 @@ namespace TimerOverlay
                 sb.AppendLine(string.Format("  \"RedCaptureW\": {0},", RedCaptureW));
                 sb.AppendLine(string.Format("  \"RedCaptureH\": {0},", RedCaptureH));
                 sb.AppendLine(string.Format("  \"RedScale\": {0},", RedScale.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
-                sb.AppendLine(string.Format("  \"RedTargetFps\": {0}", RedTargetFps));
+                sb.AppendLine(string.Format("  \"RedTargetFps\": {0},", RedTargetFps));
+                sb.AppendLine(string.Format("  \"StaticImagePath\": \"{0}\",", EscapeJson(StaticImagePath)));
+                sb.AppendLine(string.Format("  \"YellowStaticImagePath\": \"{0}\",", EscapeJson(YellowStaticImagePath)));
+                sb.AppendLine(string.Format("  \"RedStaticImagePath\": \"{0}\"", EscapeJson(RedStaticImagePath)));
                 sb.AppendLine("}");
                 File.WriteAllText(ConfigPath, sb.ToString());
             }
@@ -298,6 +327,27 @@ namespace TimerOverlay
             string val = json.Substring(colon + 1, end - colon - 1).Trim();
             double res;
             return double.TryParse(val, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out res) ? res : def;
+        }
+
+        private static string ExtractString(string json, string key, string def)
+        {
+            int idx = json.IndexOf("\"" + key + "\"");
+            if (idx == -1) return def;
+            int colon = json.IndexOf(':', idx);
+            if (colon == -1) return def;
+            int startQuote = json.IndexOf('\"', colon + 1);
+            if (startQuote == -1) return def;
+            int endQuote = json.IndexOf('\"', startQuote + 1);
+            if (endQuote == -1) return def;
+            string raw = json.Substring(startQuote + 1, endQuote - startQuote - 1);
+            if (string.IsNullOrEmpty(raw)) return def;
+            return raw.Replace("\\\\", "\\").Replace("\\\"", "\"");
+        }
+
+        private static string EscapeJson(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
     }
 
@@ -689,6 +739,10 @@ namespace TimerOverlay
         private Border _closeBtn;
         private Border _reselectBtn;
 
+        private BitmapImage _staticBitmap;
+        private string _staticImagePath;
+        public bool IsStaticMode { get { return _staticBitmap != null; } }
+
         public OverlayColor ColorType { get; private set; }
         public bool IsPrimary { get { return ColorType == OverlayColor.Blue; } }
         private OverlayWindow _parentOverlay;
@@ -877,7 +931,15 @@ namespace TimerOverlay
 
             ContextMenu = CreateContextMenu();
 
-            ApplyLayout();
+            string savedImg = _config.GetStaticImagePath(ColorType);
+            if (!string.IsNullOrEmpty(savedImg) && File.Exists(savedImg))
+            {
+                LoadStaticImage(savedImg);
+            }
+            else
+            {
+                ApplyLayout();
+            }
 
             _timer = new DispatcherTimer(DispatcherPriority.Render);
             int fps = Math.Max(30, Math.Min(144, _config.GetFps(ColorType)));
@@ -894,6 +956,44 @@ namespace TimerOverlay
                     NativeMethods.RegisterHotKey(_hwndSource.Handle, HOTKEY_ID_F9, 0, 0x78); // F9
                 }
             };
+        }
+
+        public bool LoadStaticImage(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+            try
+            {
+                BitmapImage bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(Path.GetFullPath(path));
+                bmp.EndInit();
+                bmp.Freeze();
+
+                _staticBitmap = bmp;
+                _staticImagePath = path;
+                _config.SetStaticImagePath(ColorType, path);
+                if (_displayImage != null)
+                {
+                    _displayImage.Source = _staticBitmap;
+                }
+                ApplyLayout();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("画像の読み込みに失敗しました:\n" + ex.Message, "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        public void ClearStaticImage()
+        {
+            _staticBitmap = null;
+            _staticImagePath = null;
+            _config.SetStaticImagePath(ColorType, null);
+            ApplyLayout();
+            UpdateFrame();
         }
 
         private void UpdateButtonsVisibility()
@@ -913,14 +1013,28 @@ namespace TimerOverlay
 
         public void ApplyLayout()
         {
-            int cx, cy, cw, ch;
-            _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
-            if (cw <= 0 || ch <= 0) return;
+            int w = 0;
+            int h = 0;
+
+            if (_staticBitmap != null)
+            {
+                w = (int)_staticBitmap.PixelWidth;
+                h = (int)_staticBitmap.PixelHeight;
+            }
+            else
+            {
+                int cx, cy, cw, ch;
+                _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
+                w = cw;
+                h = ch;
+            }
+
+            if (w <= 0 || h <= 0) return;
 
             double scale = _config.GetScale(ColorType);
             int pad = 8;
-            Width = Math.Max(54, (cw * scale) + pad);
-            Height = Math.Max(26, (ch * scale) + pad);
+            Width = Math.Max(54, (w * scale) + pad);
+            Height = Math.Max(26, (h * scale) + pad);
 
             if (IsPrimary)
             {
@@ -942,6 +1056,12 @@ namespace TimerOverlay
 
         private void UpdateFrame()
         {
+            if (_staticBitmap != null)
+            {
+                // 静止画表示中はキャプチャ不要（CPU負荷ゼロ）
+                return;
+            }
+
             int cx, cy, cw, ch;
             _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
             if (cw > 0 && ch > 0)
@@ -956,6 +1076,10 @@ namespace TimerOverlay
 
         public void TriggerReselect()
         {
+            if (_staticBitmap != null)
+            {
+                ClearStaticImage();
+            }
             OverlayWindow root = IsPrimary ? this : _parentOverlay;
             if (root != null && root.RequestReselectFor != null)
             {
@@ -1094,7 +1218,38 @@ namespace TimerOverlay
             reselectItem.Click += delegate { TriggerReselect(); };
             menu.Items.Add(reselectItem);
 
-            // 3. 表示倍率（枠ごとに独立）
+            // 3. 静止画を読み込み
+            MenuItem loadImageItem = new MenuItem
+            {
+                Header = "🖼️ 静止画を読み込み...",
+                Background = tintBrush
+            };
+            loadImageItem.Click += delegate
+            {
+                Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+                dlg.Title = "表示する静止画を選択";
+                dlg.Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|すべてのファイル (*.*)|*.*";
+                dlg.CheckFileExists = true;
+                if (dlg.ShowDialog() == true)
+                {
+                    LoadStaticImage(dlg.FileName);
+                }
+            };
+            menu.Items.Add(loadImageItem);
+
+            // 4. 画面キャプチャに戻す
+            MenuItem revertCaptureItem = new MenuItem
+            {
+                Header = "🎥 画面キャプチャに戻す",
+                Background = tintBrush
+            };
+            revertCaptureItem.Click += delegate
+            {
+                ClearStaticImage();
+            };
+            menu.Items.Add(revertCaptureItem);
+
+            // 5. 表示倍率（枠ごとに独立）
             MenuItem scaleMenu = new MenuItem
             {
                 Header = "🔍 表示倍率",
@@ -1113,7 +1268,7 @@ namespace TimerOverlay
             }
             menu.Items.Add(scaleMenu);
 
-            // 4. 更新レート (FPS)（枠ごとに独立）
+            // 6. 更新レート (FPS)（枠ごとに独立）
             MenuItem fpsMenu = new MenuItem
             {
                 Header = "⚡ 更新レート (FPS)",
@@ -1157,6 +1312,8 @@ namespace TimerOverlay
                     yellowItem.IsChecked = (root.YellowOverlay != null && root.YellowOverlay.IsVisible);
                     redItem.IsChecked = (root.RedOverlay != null && root.RedOverlay.IsVisible);
                 }
+
+                revertCaptureItem.IsEnabled = (_staticBitmap != null);
 
                 double currentScale = _config.GetScale(ColorType);
                 foreach (object item in scaleMenu.Items)
@@ -1275,6 +1432,7 @@ namespace TimerOverlay
                     selector.AreaSelected += delegate(int x, int y, int w, int h)
                     {
                         config.SetCaptureRect(targetColor, x, y, w, h);
+                        config.SetStaticImagePath(targetColor, null);
 
                         if (targetColor == OverlayColor.Blue)
                         {
@@ -1286,21 +1444,21 @@ namespace TimerOverlay
                             }
                             else
                             {
-                                overlay.ApplyLayout();
+                                overlay.ClearStaticImage();
                             }
                         }
                         else if (targetColor == OverlayColor.Yellow)
                         {
                             if (overlay != null && overlay.YellowOverlay != null)
                             {
-                                overlay.YellowOverlay.ApplyLayout();
+                                overlay.YellowOverlay.ClearStaticImage();
                             }
                         }
                         else if (targetColor == OverlayColor.Red)
                         {
                             if (overlay != null && overlay.RedOverlay != null)
                             {
-                                overlay.RedOverlay.ApplyLayout();
+                                overlay.RedOverlay.ClearStaticImage();
                             }
                         }
 
@@ -1311,7 +1469,8 @@ namespace TimerOverlay
 
                     selector.SelectionCancelled += delegate
                     {
-                        if (config.HasCaptureRect && overlay != null)
+                        bool hasSource = config.HasCaptureRect || (!string.IsNullOrEmpty(config.StaticImagePath) && File.Exists(config.StaticImagePath));
+                        if (hasSource && overlay != null)
                         {
                             overlay.Show();
                             if (overlay.YellowOverlay != null) overlay.YellowOverlay.Show();
@@ -1334,7 +1493,8 @@ namespace TimerOverlay
                     selector.Show();
                 };
 
-                if (config.HasCaptureRect)
+                bool hasInitial = config.HasCaptureRect || (!string.IsNullOrEmpty(config.StaticImagePath) && File.Exists(config.StaticImagePath));
+                if (hasInitial)
                 {
                     overlay = new OverlayWindow(config);
                     overlay.RequestReselectFor += delegate(OverlayColor c) { startSelection(c); };
