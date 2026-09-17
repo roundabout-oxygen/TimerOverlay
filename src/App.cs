@@ -14,20 +14,20 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.8)
+// アセンブリ情報・バージョニング (v1.1.9)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.8.0")]
-[assembly: AssemblyFileVersion("1.1.8.0")]
-[assembly: AssemblyInformationalVersion("v1.1.8")]
+[assembly: AssemblyVersion("1.1.9.0")]
+[assembly: AssemblyFileVersion("1.1.9.0")]
+[assembly: AssemblyInformationalVersion("v1.1.9")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.8";
+        public const string CurrentVersion = "v1.1.9";
 
         // メイン（青枠）
         public int CaptureX { get; set; }
@@ -919,8 +919,8 @@ namespace TimerOverlay
 
             double scale = _config.GetScale(ColorType);
             int pad = 8;
-            Width = (cw * scale) + pad;
-            Height = (ch * scale) + pad;
+            Width = Math.Max(54, (cw * scale) + pad);
+            Height = Math.Max(26, (ch * scale) + pad);
 
             if (IsPrimary)
             {
@@ -1100,7 +1100,7 @@ namespace TimerOverlay
                 Header = "🔍 表示倍率",
                 Background = tintBrush
             };
-            double[] scales = new double[] { 1.0, 1.25, 1.5, 1.75, 2.0 };
+            double[] scales = new double[] { 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.25, 1.5, 1.75, 2.0 };
             foreach (double sc in scales)
             {
                 MenuItem m = new MenuItem { Header = string.Format("{0}%", (int)(sc * 100)), IsCheckable = true, Tag = sc };

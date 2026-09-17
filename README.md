@@ -1,6 +1,6 @@
 # Timer Overlay (ゲーム画面 残り時間 最前面オーバーレイ)
 
-[![Version](https://img.shields.io/badge/version-v1.1.8-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-v1.1.9-blue.svg)](VERSION)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey.svg)]()
 [![Size](https://img.shields.io/badge/size-~26KB-success.svg)]()
@@ -19,11 +19,11 @@
 
 ## 📥 ダウンロード (Download)
 
-[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.8)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
-[![Download TimerOverlay-v1.1.8.exe](https://img.shields.io/badge/▶%20Download-TimerOverlay--v1.1.8.exe-0969da?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/TimerOverlay-v1.1.8.exe)
+[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.9)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
+[![Download TimerOverlay-v1.1.9.exe](https://img.shields.io/badge/▶%20Download-TimerOverlay--v1.1.9.exe-0969da?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/TimerOverlay-v1.1.9.exe)
 
 > 👆 **上記のボタンをクリックすると、最新版実行ファイル（約36KB）を直接ダウンロードできます。**  
-> ※`timer_overlay.exe` と `TimerOverlay-v1.1.8.exe` の中身は同一です（ファイル名にバージョンを含むかどうかの違いのみ）。  
+> ※`timer_overlay.exe` と `TimerOverlay-v1.1.9.exe` の中身は同一です（ファイル名にバージョンを含むかどうかの違いのみ）。  
 > ※ZIPの展開やインストーラーの実行は一切不要です。ダウンロードした `.exe` をダブルクリックするだけで即座に動作します。
 
 ---
@@ -38,7 +38,8 @@
 - 🎨 **多重起動モード ＆ 各枠の完全独立動作（トリミング範囲・倍率・FPS）**
   - 右クリックメニューの「多重起動」から「黄枠」「赤枠」を追加可能。
   - **各枠（青・黄・赤）は「トリミング範囲」「表示倍率」「更新レート」を完全に独立して保持します。**
-  - 「青枠にタイマー（125% / 60FPS）」「黄枠にHPバー（150% / 30FPS）」「赤枠にコストゲージ（100% / 60FPS）」のように、枠ごとに最適な設定で同時表示が可能です。
+  - 表示倍率は **50%〜200%（50%, 60%, 70%, 80%, 90%, 100%, 125%, 150%, 175%, 200%）** に対応。100%以下の縮小表示ができるため、画面の邪魔にならずコンパクトに配置できます。
+  - 「青枠にタイマー（125% / 60FPS）」「黄枠にHPバー（70% / 30FPS）」「赤枠にコストゲージ（80% / 60FPS）」のように、枠ごとに最適な設定で同時表示が可能です。
   - 右クリックメニューを開くと、クリックした枠のテーマカラー（薄い青・黄・赤）が「再設定」「表示倍率」「更新レート」に上品に反映され、どの枠の設定かが一目でわかります。
 - 🪟 **邪魔にならない最前面・角丸四隅透過UI**
   - 余計なウィンドウ枠やタイトルバーを排除したクリーンなデザイン。
@@ -112,7 +113,7 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /platform
 本ツールは `v1.1.x` 形式でバージョンを管理しています。  
 機能の追加・変更・修正が行われるたびに、末尾の数値（パッチバージョン）を +1 ずつインクリメントします（例: `v1.1.5` → `v1.1.6`）。
 
-- **現在バージョン**: `v1.1.8`
+- **現在バージョン**: `v1.1.9`
 
 ---
 
