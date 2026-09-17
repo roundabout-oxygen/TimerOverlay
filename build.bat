@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Building Timer Overlay (v1.1.10)
+echo   Building Timer Overlay (v1.1.11)
 echo ========================================================
 
 set CSC=C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe
@@ -23,6 +23,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-copy /y release\timer_overlay.exe release\TimerOverlay-v1.1.10.exe >nul
-echo [SUCCESS] Built successfully: release\timer_overlay.exe (and release\TimerOverlay-v1.1.10.exe)
+copy /y release\timer_overlay.exe release\TimerOverlay-v1.1.11.exe >nul
+echo [SUCCESS] Built successfully: release\timer_overlay.exe (and release\TimerOverlay-v1.1.11.exe)
 endlocal

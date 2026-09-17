@@ -1,17 +1,17 @@
 # Timer Overlay (ゲーム画面 残り時間 最前面オーバーレイ)
 
-[![Version](https://img.shields.io/badge/version-v1.1.10-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-v1.1.11-blue.svg)](VERSION)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey.svg)]()
-[![Size](https://img.shields.io/badge/size-~36KB-success.svg)]()
+[![Size](https://img.shields.io/badge/size-~40KB-success.svg)]()
 
 ゲーム（ブルーアーカイブ等）の戦闘画面右上などにある**「残り時間（0.00s単位）」**をリアルタイム（遅延約0.05ms/frame）にトリミングし、画面中央下など見やすい位置へ最前面・角丸枠なし（四隅完全透過）で表示するWindows用超軽量オーバーレイツールです。
 
-さらに、**任意の静止画（PNG / JPG / BMP / GIF）を読み込んで表示する機能**も搭載。目標タイム表やマップ画像などをオーバーレイとして常時最前面に配置可能です。
+さらに、**端ドラッグによるアスペクト比完全固定リサイズ**、**現在のトリミング画像の100%原寸保存**、**任意の静止画（PNG / JPG / BMP / GIF）の読み込み表示**も搭載。
 
 0.00秒単位のミリ秒カウントダウンも実画面と完全に一致して滑らかに追従します。  
 デュアルディスプレイ（マルチモニター）環境にも完全対応し、隣のディスプレイの領域指定や別画面への配置も自由自在です。  
-インストール不要、外部DLL不要、**わずか約36KBの単一実行ファイル**で動作します。
+インストール不要、外部DLL不要、**わずか約40KBの単一実行ファイル**で動作します。
 
 <p align="center">
   <img width="480" height="480" alt="Timer Overlay Demo" src="https://github.com/user-attachments/assets/6c1b3b54-a64b-4ae9-aa4d-748660e6eb1a" />
@@ -21,11 +21,11 @@
 
 ## 📥 ダウンロード (Download)
 
-[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.10)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
-[![Download TimerOverlay-v1.1.10.exe](https://img.shields.io/badge/▶%20Download-TimerOverlay--v1.1.10.exe-0969da?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/TimerOverlay-v1.1.10.exe)
+[![Download timer_overlay.exe](https://img.shields.io/badge/▶%20Download-timer__overlay.exe%20(v1.1.11)-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/timer_overlay.exe)
+[![Download TimerOverlay-v1.1.11.exe](https://img.shields.io/badge/▶%20Download-TimerOverlay--v1.1.11.exe-0969da?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/roundabout-oxygen/TimerOverlay/raw/main/release/TimerOverlay-v1.1.11.exe)
 
-> 👆 **上記のボタンをクリックすると、最新版実行ファイル（約36KB）を直接ダウンロードできます。**  
-> ※`timer_overlay.exe` と `TimerOverlay-v1.1.10.exe` の中身は同一です（ファイル名にバージョンを含むかどうかの違いのみ）。  
+> 👆 **上記のボタンをクリックすると、最新版実行ファイル（約40KB）を直接ダウンロードできます。**  
+> ※`timer_overlay.exe` と `TimerOverlay-v1.1.11.exe` の中身は同一です（ファイル名にバージョンを含むかどうかの違いのみ）。  
 > ※ZIPの展開やインストーラーの実行は一切不要です。ダウンロードした `.exe` をダブルクリックするだけで即座に動作します。
 
 ---
@@ -34,6 +34,11 @@
 
 - ⚡ **超低遅延・0.00s完全一致（ラグなし）**
   - Windowsネイティブグラフィックス（GDI / DWM）により、1フレームあたり **約0.05ms（秒間20,000フレーム相当）** の超高速処理を実現。ミリ秒単位の激しいカウントダウンも一切遅延なく実画面と一致します。
+- ↔️ **枠端ドラッグによる自由なリサイズ（アスペクト比完全固定）(NEW!)**
+  - 枠がアクティブな時、枠の四辺・四隅（端8px）をドラッグするだけで、**縦横比を完全に維持したままスムーズに拡大・縮小**できます。
+  - 右下をドラッグした場合は左上固定、左上をドラッグした場合は右下固定など自然なアンカー動作に対応。変更後のサイズは次回起動時にも自動保存されます。
+- 💾 **現在のトリミング画像を100%原寸で保存 (NEW!)**
+  - 右クリックメニューの「💾 現在のトリミング画像を保存」から、現在表示されている領域（キャプチャまたは静止画）を **100%原寸サイズ** のまま PNG / JPG / BMP 形式で保存できます。
 - 🖼️ **静止画読み込み機能（画像オーバーレイ）**
   - 右クリックメニューの「🖼️ 静止画を読み込み...」から、PNG / JPG / BMP / GIF などの画像ファイルを直接ロードして最前面表示可能。
   - 攻略チャート、ボスタイム早見表、ルートマップなどをゲーム画面の上に重ねて手軽に確認できます。
@@ -89,9 +94,11 @@
 | 操作 / キー | 機能 | 説明 |
 | :--- | :--- | :--- |
 | **多重起動** | 黄枠 / 赤枠 | 右クリックメニューの一番上から選択。黄枠・赤枠オーバーレイを追加表示します。 |
-| **左ドラッグ** | ウィンドウの移動 | オーバーレイ上のどこを掴んでも、お好みの位置へ自由に移動可能（移動先は自動保存）。 |
-| **右クリック** | 設定メニュー | 多重起動、枠色付きの「トリミング範囲再設定」「静止画を読み込み」「画面キャプチャに戻す」「表示倍率」「更新レート」、全終了などのメニューが開きます。 |
-| **🖼️ 静止画読み込み** | 画像オーバーレイ | 右クリックメニューから画像ファイル（PNG/JPG/BMP/GIF）を選択して表示。 |
+| **左ドラッグ（中央）** | ウィンドウの移動 | オーバーレイの内側を掴んで、お好みの位置へ自由に移動可能（移動先は自動保存）。 |
+| **端ドラッグ（端8px）** | 枠リサイズ (比率固定) | アクティブ時に枠の端（四辺・四隅）をドラッグしてアスペクト比完全固定で拡大・縮小。 |
+| **右クリック** | 設定メニュー | 多重起動、再設定、表示倍率、更新レート、画像保存、静止画読込、全終了などのメニュー。 |
+| **💾 画像保存** | 100%原寸保存 | 右クリック ➜「現在のトリミング画像を保存」で表示中の画像を100%原寸でファイル保存。 |
+| **🖼️ 静止画読み込み** | 画像オーバーレイ | 右クリック ➜「静止画を読み込み...」から画像（PNG/JPG/BMP/GIF）を選択して表示。 |
 | **🎥 キャプチャ復帰** | キャプチャ再開 | 右クリック ➜「画面キャプチャに戻す」で元のリアルタイム画面キャプチャに復帰。 |
 | **F9 / [📐]** | 範囲の再設定 | クリックした枠（またはアクティブな枠）のトリミング範囲を個別に再指定できます（他枠には影響しません）。 |
 | **右上の [×]** | アプリの終了 | アクティブ時に右上に表示される赤い [×] をクリックすると終了します（サブ枠の場合はその枠のみ終了）。 |
@@ -122,7 +129,7 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /platform
 本ツールは `v1.1.x` 形式でバージョンを管理しています。  
 機能の追加・変更・修正が行われるたびに、末尾の数値（パッチバージョン）を +1 ずつインクリメントします（例: `v1.1.5` → `v1.1.6`）。
 
-- **現在バージョン**: `v1.1.10`
+- **現在バージョン**: `v1.1.11`
 
 ---
 

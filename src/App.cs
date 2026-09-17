@@ -14,20 +14,20 @@ using System.Windows.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-// アセンブリ情報・バージョニング (v1.1.10)
+// アセンブリ情報・バージョニング (v1.1.11)
 [assembly: AssemblyTitle("Timer Overlay")]
 [assembly: AssemblyDescription("Lightweight, ultra-low-latency timer overlay")]
 [assembly: AssemblyProduct("TimerOverlay")]
-[assembly: AssemblyVersion("1.1.10.0")]
-[assembly: AssemblyFileVersion("1.1.10.0")]
-[assembly: AssemblyInformationalVersion("v1.1.10")]
+[assembly: AssemblyVersion("1.1.11.0")]
+[assembly: AssemblyFileVersion("1.1.11.0")]
+[assembly: AssemblyInformationalVersion("v1.1.11")]
 
 namespace TimerOverlay
 {
     // --- 設定データクラス (C# 5 準拠) ---
     public class Config
     {
-        public const string CurrentVersion = "v1.1.10";
+        public const string CurrentVersion = "v1.1.11";
 
         // メイン（青枠）
         public int CaptureX { get; set; }
@@ -726,6 +726,19 @@ namespace TimerOverlay
         Red
     }
 
+    public enum ResizeDirection
+    {
+        None,
+        Left,
+        Right,
+        Top,
+        Bottom,
+        TopLeft,
+        TopRight,
+        BottomLeft,
+        BottomRight
+    }
+
     // --- 最前面オーバーレイウィンドウ ---
     public class OverlayWindow : Window
     {
@@ -742,6 +755,17 @@ namespace TimerOverlay
         private BitmapImage _staticBitmap;
         private string _staticImagePath;
         public bool IsStaticMode { get { return _staticBitmap != null; } }
+
+        // 端ドラッグリサイズ用フィールド
+        private bool _isResizing = false;
+        private ResizeDirection _resizeDir = ResizeDirection.None;
+        private System.Windows.Point _resizeStartMouseScreen;
+        private double _resizeStartScale;
+        private double _resizeStartLeft;
+        private double _resizeStartTop;
+        private double _resizeStartWidth;
+        private double _resizeStartHeight;
+        private const double RESIZE_BORDER = 8.0;
 
         public OverlayColor ColorType { get; private set; }
         public bool IsPrimary { get { return ColorType == OverlayColor.Blue; } }
@@ -903,7 +927,17 @@ namespace TimerOverlay
 
             // アクティブ・非アクティブの切り替えでボタンの表示/非表示を自動更新
             Activated += delegate { UpdateButtonsVisibility(); };
-            Deactivated += delegate { UpdateButtonsVisibility(); };
+            Deactivated += delegate
+            {
+                if (_isResizing)
+                {
+                    _isResizing = false;
+                    _resizeDir = ResizeDirection.None;
+                    ReleaseMouseCapture();
+                }
+                Cursor = Cursors.Arrow;
+                UpdateButtonsVisibility();
+            };
             Loaded += delegate { UpdateButtonsVisibility(); };
 
             PreviewMouseDown += delegate
@@ -915,17 +949,14 @@ namespace TimerOverlay
                 }
             };
 
-            MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
+            MouseMove += OnWindowMouseMove;
+            MouseLeftButtonDown += OnWindowMouseLeftButtonDown;
+            MouseLeftButtonUp += OnWindowMouseLeftButtonUp;
+            MouseLeave += delegate
             {
-                if (e.ButtonState == MouseButtonState.Pressed)
+                if (!_isResizing)
                 {
-                    DragMove();
-                    if (IsPrimary)
-                    {
-                        _config.OverlayX = (int)Left;
-                        _config.OverlayY = (int)Top;
-                        _config.Save();
-                    }
+                    Cursor = Cursors.Arrow;
                 }
             };
 
@@ -994,6 +1025,282 @@ namespace TimerOverlay
             _config.SetStaticImagePath(ColorType, null);
             ApplyLayout();
             UpdateFrame();
+        }
+
+        private ResizeDirection GetResizeDirection(System.Windows.Point pt)
+        {
+            if (!IsActive) return ResizeDirection.None;
+
+            // ボタンの上にマウスがある場合はリサイズ判定しない（クリックを最優先）
+            if (_closeBtn != null && _closeBtn.Visibility == Visibility.Visible)
+            {
+                if (pt.X >= ActualWidth - 24 && pt.Y <= 24) return ResizeDirection.None;
+            }
+            if (_reselectBtn != null && _reselectBtn.Visibility == Visibility.Visible)
+            {
+                if (pt.X <= 24 && pt.Y <= 24) return ResizeDirection.None;
+            }
+
+            bool onLeft = pt.X <= RESIZE_BORDER;
+            bool onRight = pt.X >= ActualWidth - RESIZE_BORDER;
+            bool onTop = pt.Y <= RESIZE_BORDER;
+            bool onBottom = pt.Y >= ActualHeight - RESIZE_BORDER;
+
+            if (onLeft && onTop) return ResizeDirection.TopLeft;
+            if (onRight && onTop) return ResizeDirection.TopRight;
+            if (onLeft && onBottom) return ResizeDirection.BottomLeft;
+            if (onRight && onBottom) return ResizeDirection.BottomRight;
+            if (onLeft) return ResizeDirection.Left;
+            if (onRight) return ResizeDirection.Right;
+            if (onTop) return ResizeDirection.Top;
+            if (onBottom) return ResizeDirection.Bottom;
+
+            return ResizeDirection.None;
+        }
+
+        private Cursor GetCursorForDirection(ResizeDirection dir)
+        {
+            switch (dir)
+            {
+                case ResizeDirection.TopLeft:
+                case ResizeDirection.BottomRight:
+                    return Cursors.SizeNWSE;
+                case ResizeDirection.TopRight:
+                case ResizeDirection.BottomLeft:
+                    return Cursors.SizeNESW;
+                case ResizeDirection.Left:
+                case ResizeDirection.Right:
+                    return Cursors.SizeWE;
+                case ResizeDirection.Top:
+                case ResizeDirection.Bottom:
+                    return Cursors.SizeNS;
+                default:
+                    return Cursors.Arrow;
+            }
+        }
+
+        private void OnWindowMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isResizing)
+            {
+                if (IsActive)
+                {
+                    System.Windows.Point pt = e.GetPosition(this);
+                    ResizeDirection dir = GetResizeDirection(pt);
+                    Cursor = GetCursorForDirection(dir);
+                }
+                else
+                {
+                    Cursor = Cursors.Arrow;
+                }
+                return;
+            }
+
+            // リサイズドラッグ中
+            int baseW = 0, baseH = 0;
+            if (_staticBitmap != null)
+            {
+                baseW = (int)_staticBitmap.PixelWidth;
+                baseH = (int)_staticBitmap.PixelHeight;
+            }
+            else
+            {
+                int cx, cy, cw, ch;
+                _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
+                baseW = cw;
+                baseH = ch;
+            }
+            if (baseW <= 0 || baseH <= 0) return;
+
+            System.Windows.Point curScreen = PointToScreen(e.GetPosition(this));
+            double dx = curScreen.X - _resizeStartMouseScreen.X;
+            double dy = curScreen.Y - _resizeStartMouseScreen.Y;
+
+            // アスペクト比固定のための有効なドラッグ量 delta を計算
+            double delta = 0;
+            switch (_resizeDir)
+            {
+                case ResizeDirection.Right:
+                    delta = dx;
+                    break;
+                case ResizeDirection.Bottom:
+                    delta = dy * ((double)baseW / baseH);
+                    break;
+                case ResizeDirection.BottomRight:
+                    delta = Math.Max(dx, dy * ((double)baseW / baseH));
+                    break;
+
+                case ResizeDirection.Left:
+                    delta = -dx;
+                    break;
+                case ResizeDirection.Top:
+                    delta = -dy * ((double)baseW / baseH);
+                    break;
+                case ResizeDirection.TopLeft:
+                    delta = Math.Max(-dx, -dy * ((double)baseW / baseH));
+                    break;
+
+                case ResizeDirection.TopRight:
+                    delta = Math.Max(dx, -dy * ((double)baseW / baseH));
+                    break;
+                case ResizeDirection.BottomLeft:
+                    delta = Math.Max(-dx, dy * ((double)baseW / baseH));
+                    break;
+            }
+
+            double targetWidth = _resizeStartWidth + delta;
+            int pad = 8;
+            double contentW = targetWidth - pad;
+            double newScale = contentW / baseW;
+
+            // スケール範囲制限 (0.3倍 〜 5.0倍)
+            newScale = Math.Max(0.3, Math.Min(5.0, newScale));
+
+            // 新しいウィンドウサイズ
+            double newW = Math.Max(54, (baseW * newScale) + pad);
+            double newH = Math.Max(26, (baseH * newScale) + pad);
+
+            // アンカー位置に応じて Left / Top を調整
+            double newLeft = _resizeStartLeft;
+            double newTop = _resizeStartTop;
+
+            if (_resizeDir == ResizeDirection.Left || _resizeDir == ResizeDirection.TopLeft || _resizeDir == ResizeDirection.BottomLeft)
+            {
+                newLeft = _resizeStartLeft + (_resizeStartWidth - newW);
+            }
+            if (_resizeDir == ResizeDirection.Top || _resizeDir == ResizeDirection.TopLeft || _resizeDir == ResizeDirection.TopRight)
+            {
+                newTop = _resizeStartTop + (_resizeStartHeight - newH);
+            }
+
+            Left = newLeft;
+            Top = newTop;
+            SetScale(newScale);
+
+            if (IsPrimary)
+            {
+                _config.OverlayX = (int)Left;
+                _config.OverlayY = (int)Top;
+            }
+        }
+
+        private void OnWindowMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+            {
+                if (IsActive)
+                {
+                    System.Windows.Point pt = e.GetPosition(this);
+                    ResizeDirection dir = GetResizeDirection(pt);
+                    if (dir != ResizeDirection.None)
+                    {
+                        _isResizing = true;
+                        _resizeDir = dir;
+                        _resizeStartMouseScreen = PointToScreen(pt);
+                        _resizeStartScale = _config.GetScale(ColorType);
+                        _resizeStartLeft = Left;
+                        _resizeStartTop = Top;
+                        _resizeStartWidth = ActualWidth;
+                        _resizeStartHeight = ActualHeight;
+                        CaptureMouse();
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
+                // リサイズ端でない場合はウィンドウ移動
+                DragMove();
+                if (IsPrimary)
+                {
+                    _config.OverlayX = (int)Left;
+                    _config.OverlayY = (int)Top;
+                    _config.Save();
+                }
+            }
+        }
+
+        private void OnWindowMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isResizing)
+            {
+                _isResizing = false;
+                _resizeDir = ResizeDirection.None;
+                ReleaseMouseCapture();
+                _config.Save();
+                e.Handled = true;
+            }
+        }
+
+        public void SaveCurrentImage()
+        {
+            BitmapSource bmpToSave = null;
+
+            if (_staticBitmap != null)
+            {
+                // 静止画モード: 元画像（100%原寸）を保存
+                bmpToSave = _staticBitmap;
+            }
+            else
+            {
+                // キャプチャモード: 現在のトリミング矩形から100%原寸でキャプチャ
+                int cx, cy, cw, ch;
+                _config.GetCaptureRect(ColorType, out cx, out cy, out cw, out ch);
+                if (cw > 0 && ch > 0)
+                {
+                    bmpToSave = _capture.Capture(cx, cy, cw, ch);
+                }
+            }
+
+            if (bmpToSave == null)
+            {
+                MessageBox.Show("保存できる画像がありません。\nトリミング範囲が設定されているかご確認ください。", "保存エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            Microsoft.Win32.SaveFileDialog dlg = new Microsoft.Win32.SaveFileDialog();
+            dlg.Title = "現在のトリミング画像を保存 (100%原寸)";
+            dlg.Filter = "PNG画像 (*.png)|*.png|JPEG画像 (*.jpg)|*.jpg|ビットマップ (*.bmp)|*.bmp";
+            dlg.DefaultExt = ".png";
+            dlg.FileName = string.Format("timer_capture_{0}.png", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+
+            if (dlg.ShowDialog(this) == true)
+            {
+                try
+                {
+                    SaveBitmapSourceToFile(bmpToSave, dlg.FileName);
+                    try { System.Media.SystemSounds.Asterisk.Play(); } catch { }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("画像の保存に失敗しました:\n" + ex.Message, "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private static void SaveBitmapSourceToFile(BitmapSource source, string filePath)
+        {
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            BitmapEncoder encoder;
+            if (ext == ".jpg" || ext == ".jpeg")
+            {
+                JpegBitmapEncoder jpg = new JpegBitmapEncoder();
+                jpg.QualityLevel = 95;
+                encoder = jpg;
+            }
+            else if (ext == ".bmp")
+            {
+                encoder = new BmpBitmapEncoder();
+            }
+            else
+            {
+                encoder = new PngBitmapEncoder();
+            }
+
+            encoder.Frames.Add(BitmapFrame.Create(source));
+            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+            {
+                encoder.Save(fs);
+            }
         }
 
         private void UpdateButtonsVisibility()
@@ -1218,38 +1525,7 @@ namespace TimerOverlay
             reselectItem.Click += delegate { TriggerReselect(); };
             menu.Items.Add(reselectItem);
 
-            // 3. 静止画を読み込み
-            MenuItem loadImageItem = new MenuItem
-            {
-                Header = "🖼️ 静止画を読み込み...",
-                Background = tintBrush
-            };
-            loadImageItem.Click += delegate
-            {
-                Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-                dlg.Title = "表示する静止画を選択";
-                dlg.Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|すべてのファイル (*.*)|*.*";
-                dlg.CheckFileExists = true;
-                if (dlg.ShowDialog() == true)
-                {
-                    LoadStaticImage(dlg.FileName);
-                }
-            };
-            menu.Items.Add(loadImageItem);
-
-            // 4. 画面キャプチャに戻す
-            MenuItem revertCaptureItem = new MenuItem
-            {
-                Header = "🎥 画面キャプチャに戻す",
-                Background = tintBrush
-            };
-            revertCaptureItem.Click += delegate
-            {
-                ClearStaticImage();
-            };
-            menu.Items.Add(revertCaptureItem);
-
-            // 5. 表示倍率（枠ごとに独立）
+            // 3. 表示倍率（枠ごとに独立）
             MenuItem scaleMenu = new MenuItem
             {
                 Header = "🔍 表示倍率",
@@ -1268,7 +1544,7 @@ namespace TimerOverlay
             }
             menu.Items.Add(scaleMenu);
 
-            // 6. 更新レート (FPS)（枠ごとに独立）
+            // 4. 更新レート (FPS)（枠ごとに独立）
             MenuItem fpsMenu = new MenuItem
             {
                 Header = "⚡ 更新レート (FPS)",
@@ -1286,6 +1562,49 @@ namespace TimerOverlay
                 fpsMenu.Items.Add(m);
             }
             menu.Items.Add(fpsMenu);
+
+            // 5. 現在のトリミング画像を保存 (100%原寸)
+            MenuItem saveImageItem = new MenuItem
+            {
+                Header = "💾 現在のトリミング画像を保存",
+                Background = tintBrush
+            };
+            saveImageItem.Click += delegate
+            {
+                SaveCurrentImage();
+            };
+            menu.Items.Add(saveImageItem);
+
+            // 6. 静止画を読み込み
+            MenuItem loadImageItem = new MenuItem
+            {
+                Header = "🖼️ 静止画を読み込み...",
+                Background = tintBrush
+            };
+            loadImageItem.Click += delegate
+            {
+                Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+                dlg.Title = "表示する静止画を選択";
+                dlg.Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|すべてのファイル (*.*)|*.*";
+                dlg.CheckFileExists = true;
+                if (dlg.ShowDialog() == true)
+                {
+                    LoadStaticImage(dlg.FileName);
+                }
+            };
+            menu.Items.Add(loadImageItem);
+
+            // 7. 画面キャプチャに戻す
+            MenuItem revertCaptureItem = new MenuItem
+            {
+                Header = "🎥 画面キャプチャに戻す",
+                Background = tintBrush
+            };
+            revertCaptureItem.Click += delegate
+            {
+                ClearStaticImage();
+            };
+            menu.Items.Add(revertCaptureItem);
 
             menu.Items.Add(new Separator());
 
@@ -1316,6 +1635,7 @@ namespace TimerOverlay
                 revertCaptureItem.IsEnabled = (_staticBitmap != null);
 
                 double currentScale = _config.GetScale(ColorType);
+                scaleMenu.Header = string.Format("🔍 表示倍率 ({0}%)", (int)Math.Round(currentScale * 100));
                 foreach (object item in scaleMenu.Items)
                 {
                     MenuItem mi = item as MenuItem;
